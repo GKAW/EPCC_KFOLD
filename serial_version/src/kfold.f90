@@ -73,6 +73,8 @@
         LOGICAL :: istart,istop
 
 
+        INTEGER(4) :: iargc
+
         !=== DEFAULT SETTINGS ===!
 
         !=== Max Time (microseconds) ===!
@@ -195,6 +197,7 @@
 
         !=== SECTION 2 - Perform RNA Kinetics ===! 
 
+        !$OMP PARALLEL DO
         DO isim=1,nsim
 
           io = 1
@@ -252,6 +255,7 @@
           ENDDO
 
         ENDDO
+        !$OMP END PARALLEL DO
 
         CLOSE (UNIT=1)
         CLOSE (UNIT=2)
