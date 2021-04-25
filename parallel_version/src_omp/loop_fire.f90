@@ -122,15 +122,10 @@ SUBROUTINE LOOP_FIRE (R,INDX,AMAX)
 
                  IF ( l > 4 .and. iwc(is,js) == 1 ) THEN
 
-                    atot = atot + pnuc(l)
-
-                    IF ( atot >= amax ) THEN
-
-                       CALL NUCLEATION(r, iloop, indx, ip, jndx, j, jp, k, kndx, kp, mh, ms, nh, nl, ns, nsum, early_ret)
-                       IF (early_ret) THEN
-                          RETURN
-                       ENDIF
-
+                    CALL NUCLEATION(r, amax, atot, iloop, indx, ip, jndx, j, jp, k, kndx, kp, l, &
+                         mh, ms, nh, nl, ns, nsum, early_ret)
+                    IF (early_ret) THEN
+                       RETURN
                     ENDIF
 
                  ENDIF
@@ -1128,11 +1123,14 @@ SUBROUTINE LOOP_FIRE (R,INDX,AMAX)
 
 END SUBROUTINE LOOP_FIRE
 
-SUBROUTINE NUCLEATION(r, iloop, indx, ip, jndx, j, jp, k, kndx, kp, mh, ms, nh, nl, ns, nsum, early_ret)
+SUBROUTINE NUCLEATION(r, amax, atot, iloop, indx, ip, jndx, j, jp, k, kndx, kp, l, mh, ms, nh, nl, ns, nsum, early_ret)
 
   IMPLICIT NONE
 
   TYPE(RNA_STRUC), INTENT(INOUT) :: r
+  DOUBLE PRECISION, INTENT(IN) :: amax
+  DOUBLE PRECISION, INTENT(INOUT) :: atot
+  
   INTEGER, INTENT(IN) :: iloop, indx
   INTEGER, INTENT(INOUT) :: ip
   INTEGER, INTENT(IN) :: j
@@ -1140,78 +1138,88 @@ SUBROUTINE NUCLEATION(r, iloop, indx, ip, jndx, j, jp, k, kndx, kp, mh, ms, nh, 
   INTEGER, INTENT(INOUT) :: jp
   INTEGER, INTENT(IN) :: k, kp
   INTEGER, INTENT(INOUT) :: kndx
+  INTEGER, INTENT(IN) :: l
   INTEGER, INTENT(INOUT) :: mh, ms
   INTEGER, INTENT(IN) :: nh
   INTEGER, INTENT(INOUT) :: nl
   INTEGER, INTENT(IN) :: nsum, ns
   LOGICAL, INTENT(OUT) :: early_ret
 
+  !! Initialise
   early_ret = .FALSE.
-  
-  nl = nl + 1
 
-  r% ibsp(k) = kp
-  r% ibsp(kp)= k
-  r% nl = nl
+  !! Subroutine body
 
-  IF ( nl > nsum ) THEN
-     r% nsum = 2 * nsum
-  ENDIF
+  atot = atot + pnuc(l)
 
-  IF ( k < kp ) THEN
-     r% loop(nl) = k
-     r% link(k)  = nl
-     r% link(kp) = indx
-  ELSE
-     r% loop(nl) = kp
-     r% link(k)  = indx
-     r% link(kp) = nl
-  ENDIF
+  IF ( atot >= amax ) THEN
 
-  !=== Fix Links in New Loop ===!
+     nl = nl + 1
 
-  mh = 1
-  ms = 0
+     r% ibsp(k) = kp
+     r% ibsp(kp)= k
+     r% nl = nl
 
-  ip = MIN(k,kp)
-  jp = ip + 1
-
-  jndx = r% link(ip)
-  
-  DO WHILE ( jp < r% ibsp(ip) )
-
-     IF ( r% link(jp) == indx ) THEN
-        r% link(jp) = jndx
+     IF ( nl > nsum ) THEN
+        r% nsum = 2 * nsum
      ENDIF
 
-     IF ( r% ibsp(jp) > jp ) mh = mh + 1
-     IF ( r% ibsp(jp) == 0 ) ms = ms + 1
-
-     IF ( r% ibsp(jp) > jp ) THEN
-        jp = r% ibsp(jp)
+     IF ( k < kp ) THEN
+        r% loop(nl) = k
+        r% link(k)  = nl
+        r% link(kp) = indx
      ELSE
-        jp = jp + 1
+        r% loop(nl) = kp
+        r% link(k)  = indx
+        r% link(kp) = nl
      ENDIF
 
-  ENDDO
+     !=== Fix Links in New Loop ===!
 
-  r% nhlx(indx) = nh - mh + 2
-  r% nsgl(indx) = ns - ms - 2
+     mh = 1
+     ms = 0
 
-  r% nhlx(jndx) = mh
-  r% nsgl(jndx) = ms
+     ip = MIN(k,kp)
+     jp = ip + 1
 
-  CALL LOOP_REAC (r,indx)
-  CALL LOOP_REAC (r,jndx)
+     jndx = r% link(ip)
 
-  !=== Recalc Lower Loop? ===!
+     DO WHILE ( jp < r% ibsp(ip) )
 
-  IF ( iloop == 0 ) kndx = 0
-  IF ( iloop == 1 ) kndx = r% link(j)
+        IF ( r% link(jp) == indx ) THEN
+           r% link(jp) = jndx
+        ENDIF
 
-  IF ( kndx /= 0 ) CALL LOOP_REAC (r,kndx)
+        IF ( r% ibsp(jp) > jp ) mh = mh + 1
+        IF ( r% ibsp(jp) == 0 ) ms = ms + 1
 
-  early_ret = .TRUE.
-  RETURN
+        IF ( r% ibsp(jp) > jp ) THEN
+           jp = r% ibsp(jp)
+        ELSE
+           jp = jp + 1
+        ENDIF
+
+     ENDDO
+
+     r% nhlx(indx) = nh - mh + 2
+     r% nsgl(indx) = ns - ms - 2
+
+     r% nhlx(jndx) = mh
+     r% nsgl(jndx) = ms
+
+     CALL LOOP_REAC (r,indx)
+     CALL LOOP_REAC (r,jndx)
+
+     !=== Recalc Lower Loop? ===!
+
+     IF ( iloop == 0 ) kndx = 0
+     IF ( iloop == 1 ) kndx = r% link(j)
+
+     IF ( kndx /= 0 ) CALL LOOP_REAC (r,kndx)
+
+     early_ret = .TRUE.
+     RETURN
+
+  ENDIF
 
 END SUBROUTINE NUCLEATION
