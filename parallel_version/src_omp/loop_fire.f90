@@ -136,124 +136,12 @@ SUBROUTINE LOOP_FIRE (R,INDX,AMAX)
         icase = 0
 
         !=== Helix Morphing ===!
-
-        IF ( iloop == 0 .or. nh > 2 ) THEN
-           IF ( ip > 1 .and. jp < n ) THEN
-
-              is = r% iseq(ip-1)
-              js = r% iseq(jp+1)
-
-              IF ( iwc(is,js) == 1 ) icase = 1
-
-              is = r% ibsp(ip-1)
-              js = r% ibsp(jp+1)
-
-              IF ( is /= 0 ) THEN
-                 IF ( r% link(is) /= 0 ) icase = 0
-              ENDIF
-
-              IF ( js /= 0 ) THEN
-                 IF ( r% link(jp+1) /= 0 ) icase = 0
-              ENDIF
-
-              IF ( is == 0 .and. js == 0 ) icase = 0
-
-           ENDIF
+        CALL HELIX_MORPH(r, amax, atot, dg, i, icase, iloop, indx, ip, is, j, jndx, jp, js, &
+             k, ke, kndx, kp, l, mh, ms, n, nh, nl, ns, nsum, x, early_ret)
+        IF (early_ret) THEN
+           RETURN
         ENDIF
 
-        IF ( icase > 0 ) THEN
-
-           CALL DELTAG_HM (r,ip,jp,dg)
-
-           dg = dg / 2.0d0
-
-           x = beta * dg
-           x = DEXP(-x) * ratem
-
-           atot = atot + x
-
-           IF ( atot >= amax ) THEN
-
-              is = r% ibsp(ip-1)
-              js = r% ibsp(jp+1)
-
-              IF ( is /= 0 ) THEN
-
-                 r% ibsp(is)  = 0
-                 r% link(ip-1)= 0
-                 r% link(ip-2)= indx
-
-                 IF ( iloop == 1 .and. is == ke ) THEN
-                    r% loop(indx) = ip - 2
-                 ENDIF
-
-              ENDIF
-
-              IF ( js /= 0 ) THEN
-
-                 r% ibsp(js)  = 0
-                 r% link(js)  = 0
-                 r% link(js-1)= indx
-
-                 IF ( iloop == 1 .and. js ==  i ) THEN
-                    r% loop(indx) = js - 1
-                 ENDIF
-
-              ENDIF
-
-              IF ( is /= 0 .and. js /= 0 ) THEN
-                 ns = ns + 2
-                 r% nsgl(indx) = ns
-              ENDIF
-
-              !=== Adjust Base-Pairs ===!
-
-              r% ibsp(ip-1) = jp+1
-              r% ibsp(jp+1) = ip-1
-
-              !=== Fix Links ===!
-
-              r% link(jp+1) = r% link(jp)
-              r% link(jp) = 0
-
-              IF ( iloop == 1 .and. k == ke ) THEN
-                 r% loop(indx) = jp + 1
-              ENDIF
-
-              !=== Recalc Main Loop ===!
-
-              CALL LOOP_REAC (r,indx)
-
-              jndx = r% link(ip)
-              IF ( jndx == 0 ) CALL HELX_REAC (r,ip)
-              IF ( jndx /= 0 ) CALL LOOP_REAC (r,jndx)
-
-              !=== Recalc 5' 3' Loops? ===!
-
-              IF ( is /= 0 ) THEN
-                 jndx = r% link(is+1)
-                 IF ( jndx == 0 ) CALL HELX_REAC (r,is+1)
-                 IF ( jndx /= 0 ) CALL LOOP_REAC (r,jndx)
-              ENDIF
-
-              IF ( js /= 0 ) THEN
-                 jndx = r% link(jp+2)
-                 IF ( jndx == 0 ) CALL HELX_REAC (r,jp+2)
-                 IF ( jndx /= 0 ) CALL LOOP_REAC (r,jndx)
-              ENDIF
-
-              !=== Recalc Lower Loop? ===!
-
-              IF ( iloop == 0 ) kndx = 0
-              IF ( iloop == 1 ) kndx = r% link(j)
-
-              IF ( kndx /= 0 ) CALL LOOP_REAC (r,kndx)
-
-              RETURN
-
-           ENDIF
-
-        ENDIF
 
         !=== Defect Diffusion ===!
 
@@ -1295,3 +1183,148 @@ SUBROUTINE HELIX_RETRACT(r, amax, atot, i, icase, iloop, indx, ip, j, jndx, jp, 
   ENDIF
 
 END SUBROUTINE HELIX_RETRACT
+
+SUBROUTINE HELIX_MORPH(r, amax, atot, dg, i, icase, iloop, indx, ip, is, j, jndx, jp, js, &
+     k, ke, kndx, kp, l, mh, ms, n, nh, nl, ns, nsum, x, early_ret)
+
+  IMPLICIT NONE
+
+  TYPE(RNA_STRUC), INTENT(INOUT) :: r
+  DOUBLE PRECISION, INTENT(IN) :: amax
+  DOUBLE PRECISION, INTENT(INOUT) :: atot
+  DOUBLE PRECISION, INTENT(OUT) :: dg
+  
+  INTEGER, INTENT(IN) :: i, iloop, indx, ip
+  INTEGER, INTENT(INOUT) :: icase, is
+  INTEGER, INTENT(IN) :: j, jp
+  INTEGER, INTENT(INOUT) :: jndx, js
+  INTEGER, INTENT(IN) :: k, ke
+  INTEGER, INTENT(INOUT) :: kndx, kp
+  INTEGER, INTENT(INOUT) :: l
+  INTEGER, INTENT(INOUT) :: mh, ms
+  INTEGER, INTENT(IN) :: n, nh, nl
+  INTEGER, INTENT(INOUT) :: nsum, ns
+  DOUBLE PRECISION, INTENT(OUT) :: x
+
+  LOGICAL, INTENT(OUT) :: early_ret
+
+  IF ( iloop == 0 .or. nh > 2 ) THEN
+     IF ( ip > 1 .and. jp < n ) THEN
+
+        is = r% iseq(ip-1)
+        js = r% iseq(jp+1)
+
+        IF ( iwc(is,js) == 1 ) icase = 1
+
+        is = r% ibsp(ip-1)
+        js = r% ibsp(jp+1)
+
+        IF ( is /= 0 ) THEN
+           IF ( r% link(is) /= 0 ) icase = 0
+        ENDIF
+
+        IF ( js /= 0 ) THEN
+           IF ( r% link(jp+1) /= 0 ) icase = 0
+        ENDIF
+
+        IF ( is == 0 .and. js == 0 ) icase = 0
+
+     ENDIF
+  ENDIF
+
+  IF ( icase > 0 ) THEN
+
+     CALL DELTAG_HM (r,ip,jp,dg)
+
+     dg = dg / 2.0d0
+
+     x = beta * dg
+     x = DEXP(-x) * ratem
+
+     atot = atot + x
+
+     IF ( atot >= amax ) THEN
+
+        is = r% ibsp(ip-1)
+        js = r% ibsp(jp+1)
+
+        IF ( is /= 0 ) THEN
+
+           r% ibsp(is)  = 0
+           r% link(ip-1)= 0
+           r% link(ip-2)= indx
+
+           IF ( iloop == 1 .and. is == ke ) THEN
+              r% loop(indx) = ip - 2
+           ENDIF
+
+        ENDIF
+
+        IF ( js /= 0 ) THEN
+
+           r% ibsp(js)  = 0
+           r% link(js)  = 0
+           r% link(js-1)= indx
+
+           IF ( iloop == 1 .and. js ==  i ) THEN
+              r% loop(indx) = js - 1
+           ENDIF
+
+        ENDIF
+
+        IF ( is /= 0 .and. js /= 0 ) THEN
+           ns = ns + 2
+           r% nsgl(indx) = ns
+        ENDIF
+
+        !=== Adjust Base-Pairs ===!
+
+        r% ibsp(ip-1) = jp+1
+        r% ibsp(jp+1) = ip-1
+
+        !=== Fix Links ===!
+
+        r% link(jp+1) = r% link(jp)
+        r% link(jp) = 0
+
+        IF ( iloop == 1 .and. k == ke ) THEN
+           r% loop(indx) = jp + 1
+        ENDIF
+
+        !=== Recalc Main Loop ===!
+
+        CALL LOOP_REAC (r,indx)
+
+        jndx = r% link(ip)
+        IF ( jndx == 0 ) CALL HELX_REAC (r,ip)
+        IF ( jndx /= 0 ) CALL LOOP_REAC (r,jndx)
+
+        !=== Recalc 5' 3' Loops? ===!
+
+        IF ( is /= 0 ) THEN
+           jndx = r% link(is+1)
+           IF ( jndx == 0 ) CALL HELX_REAC (r,is+1)
+           IF ( jndx /= 0 ) CALL LOOP_REAC (r,jndx)
+        ENDIF
+
+        IF ( js /= 0 ) THEN
+           jndx = r% link(jp+2)
+           IF ( jndx == 0 ) CALL HELX_REAC (r,jp+2)
+           IF ( jndx /= 0 ) CALL LOOP_REAC (r,jndx)
+        ENDIF
+
+        !=== Recalc Lower Loop? ===!
+
+        IF ( iloop == 0 ) kndx = 0
+        IF ( iloop == 1 ) kndx = r% link(j)
+
+        IF ( kndx /= 0 ) CALL LOOP_REAC (r,kndx)
+
+        early_ret = .TRUE.
+        RETURN
+
+     ENDIF
+
+  ENDIF
+
+END SUBROUTINE HELIX_MORPH
