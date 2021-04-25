@@ -117,147 +117,10 @@ SUBROUTINE LOOP_FIRE (R,INDX,AMAX)
 
         !=== Helix Extension ===!
 
-        IF ( ip > 1 .and. jp < n ) THEN
-           IF ( nh > 1  .or. ns > 4 ) THEN
-              IF ( r%ibsp(ip-1) == 0 .and. r%ibsp(jp+1) == 0 ) THEN
-
-                 is = r% iseq(ip-1)
-                 js = r% iseq(jp+1)
-
-                 IF ( iwc(is,js) == 1 ) THEN
-
-                    icase = 1
-
-                    IF ( iloop == 1 ) THEN
-                       IF ( nh == 2 .and. ns == 2 ) THEN
-                          icase = 2
-                          IF ( k == ke ) icase = 0
-                       ELSEIF ( k == ke ) THEN
-                          icase = 3
-                       ENDIF
-                    ENDIF
-
-                 ENDIF
-
-              ENDIF
-           ENDIF
-        ENDIF
-
-        IF ( icase > 0 ) THEN
-
-           atot = atot + r% wrk2(ip)
-
-           IF ( atot >= amax ) THEN
-
-              IF ( icase == 1 ) THEN
-
-                 jndx = r% link(ip)
-                 r% nsgl(indx) = ns - 2
-
-              ELSEIF ( icase == 2 ) THEN
-
-                 jndx = r% link(i+2)
-
-                 IF ( jndx == nl ) THEN
-                    jndx = indx
-                 ENDIF
-
-                 !=== Delete Loop indx ===!
-
-                 !=== Copy Loop nl to indx ===!
-
-                 IF ( indx /= nl ) THEN
-
-                    r% loop(indx) = r% loop(nl)
-                    r% nhlx(indx) = r% nhlx(nl)
-                    r% nsgl(indx) = r% nsgl(nl)
-                    r% ptot(indx) = r% ptot(nl)
-
-                    CALL LOOP_RESUM (r,indx)
-
-                    kp = r% loop(nl)
-
-                    r% link(kp) = indx
-
-                    l = kp + 1
-
-                    DO WHILE ( l < r% ibsp(kp) )
-
-                       IF ( r% link(l) == nl ) THEN
-                          r% link(l) = indx
-                       ENDIF
-
-                       IF ( r% ibsp(l) > l ) THEN
-                          l = r% ibsp(l)
-                       ELSE
-                          l = l + 1
-                       ENDIF
-
-                    ENDDO
-
-                 ENDIF
-
-                 r% link(i)  = 0
-                 r% link(j-2)= 0
-
-                 r% loop(nl) = 0
-                 r% nhlx(nl) = 0
-                 r% nsgl(nl) = 0
-                 r% ptot(nl) = 0.0d0
-
-                 CALL LOOP_RESUM (r,nl)
-
-                 r% nl = nl - 1
-
-                 IF ( nsum > 2 ) THEN
-                    IF ( r% nl <= nsum / 2 ) THEN
-                       nsum = nsum / 2
-                       r% nsum = nsum
-                       r% psum(nsum) = 0.0d0
-                    ENDIF
-                 ENDIF
-
-              ELSEIF ( icase == 3 ) THEN
-
-                 r% loop(indx) = jp + 1
-                 r% nsgl(indx) = ns - 2
-
-              ENDIF
-
-              !=== Adjust Base-Pairs ===!
-
-              r% ibsp(ip-1) = jp+1
-              r% ibsp(jp+1) = ip-1
-
-              !=== Fix Links ===!
-
-              r% link(jp+1) = r% link(jp)
-              r% link(jp) = 0
-
-              !=== Recalc Main Loop? ===!
-
-              IF ( icase /= 2 ) THEN
-                 CALL LOOP_REAC (r,indx)
-              ENDIF
-
-              !=== Recalc Upper Loop? ===!
-
-              IF ( icase /= 3 ) THEN
-                 IF ( jndx == 0 ) CALL HELX_REAC (r,ip)
-                 IF ( jndx /= 0 ) CALL LOOP_REAC (r,jndx)
-              ENDIF
-
-              !=== Recalc Lower Loop? ===!
-
-              IF ( iloop == 0 ) kndx = 0
-              IF ( iloop == 1 ) kndx = r% link(j)
-
-              IF ( kndx /= 0 ) CALL LOOP_REAC (r,kndx)
-
-              RETURN
-
-           ENDIF
-
+        CALL HELIX_EXTEND(r, amax, atot, i, icase, iloop, indx, ip, is, j, jndx, jp, js, &
+             k, ke, kndx, kp, l, n, nh, nl, ns, nsum, early_ret)
+        IF (early_ret) THEN
+           RETURN
         ENDIF
 
         !=== Helix Retraction ===!
@@ -1229,3 +1092,173 @@ SUBROUTINE NUCLEATION(r, amax, atot, icnt, iloop, indx, ip, is, jndx, j, jp, js,
   ENDIF
 
 END SUBROUTINE NUCLEATION
+
+SUBROUTINE HELIX_EXTEND(r, amax, atot, i, icase, iloop, indx, ip, is, j, jndx, jp, js, &
+     k, ke, kndx, kp, l, n, nh, nl, ns, nsum, early_ret)
+
+  IMPLICIT NONE
+
+  TYPE(RNA_STRUC), INTENT(INOUT) :: r
+  DOUBLE PRECISION, INTENT(IN) :: amax
+  DOUBLE PRECISION, INTENT(INOUT) :: atot
+
+  INTEGER, INTENT(IN) :: i, iloop, indx, ip
+  INTEGER, INTENT(INOUT) :: icase
+  INTEGER, INTENT(OUT) :: is
+  INTEGER, INTENT(IN) :: j, jp
+  INTEGER, INTENT(INOUT) :: jndx, js
+  INTEGER, INTENT(IN) :: k, ke
+  INTEGER, INTENT(INOUT) :: kndx, kp
+  INTEGER, INTENT(INOUT) :: l
+  INTEGER, INTENT(IN) :: n, nh, nl, ns
+  INTEGER, INTENT(INOUT) :: nsum
+
+  LOGICAL, INTENT(OUT) :: early_ret
+
+  early_ret = .FALSE.
+  
+  IF ( ip > 1 .and. jp < n ) THEN
+     IF ( nh > 1  .or. ns > 4 ) THEN
+        IF ( r%ibsp(ip-1) == 0 .and. r%ibsp(jp+1) == 0 ) THEN
+
+           is = r% iseq(ip-1)
+           js = r% iseq(jp+1)
+
+           IF ( iwc(is,js) == 1 ) THEN
+
+              icase = 1
+
+              IF ( iloop == 1 ) THEN
+                 IF ( nh == 2 .and. ns == 2 ) THEN
+                    icase = 2
+                    IF ( k == ke ) icase = 0
+                 ELSEIF ( k == ke ) THEN
+                    icase = 3
+                 ENDIF
+              ENDIF
+
+           ENDIF
+
+        ENDIF
+     ENDIF
+  ENDIF
+
+  IF ( icase > 0 ) THEN
+
+     atot = atot + r% wrk2(ip)
+
+     IF ( atot >= amax ) THEN
+
+        IF ( icase == 1 ) THEN
+
+           jndx = r% link(ip)
+           r% nsgl(indx) = ns - 2
+
+        ELSEIF ( icase == 2 ) THEN
+
+           jndx = r% link(i+2)
+
+           IF ( jndx == nl ) THEN
+              jndx = indx
+           ENDIF
+
+           !=== Delete Loop indx ===!
+
+           !=== Copy Loop nl to indx ===!
+
+           IF ( indx /= nl ) THEN
+
+              r% loop(indx) = r% loop(nl)
+              r% nhlx(indx) = r% nhlx(nl)
+              r% nsgl(indx) = r% nsgl(nl)
+              r% ptot(indx) = r% ptot(nl)
+
+              CALL LOOP_RESUM (r,indx)
+
+              kp = r% loop(nl)
+
+              r% link(kp) = indx
+
+              l = kp + 1
+
+              DO WHILE ( l < r% ibsp(kp) )
+
+                 IF ( r% link(l) == nl ) THEN
+                    r% link(l) = indx
+                 ENDIF
+
+                 IF ( r% ibsp(l) > l ) THEN
+                    l = r% ibsp(l)
+                 ELSE
+                    l = l + 1
+                 ENDIF
+
+              ENDDO
+
+           ENDIF
+
+           r% link(i)  = 0
+           r% link(j-2)= 0
+
+           r% loop(nl) = 0
+           r% nhlx(nl) = 0
+           r% nsgl(nl) = 0
+           r% ptot(nl) = 0.0d0
+
+           CALL LOOP_RESUM (r,nl)
+
+           r% nl = nl - 1
+
+           IF ( nsum > 2 ) THEN
+              IF ( r% nl <= nsum / 2 ) THEN
+                 nsum = nsum / 2
+                 r% nsum = nsum
+                 r% psum(nsum) = 0.0d0
+              ENDIF
+           ENDIF
+
+        ELSEIF ( icase == 3 ) THEN
+
+           r% loop(indx) = jp + 1
+           r% nsgl(indx) = ns - 2
+
+        ENDIF
+
+        !=== Adjust Base-Pairs ===!
+
+        r% ibsp(ip-1) = jp+1
+        r% ibsp(jp+1) = ip-1
+
+        !=== Fix Links ===!
+
+        r% link(jp+1) = r% link(jp)
+        r% link(jp) = 0
+
+        !=== Recalc Main Loop? ===!
+
+        IF ( icase /= 2 ) THEN
+           CALL LOOP_REAC (r,indx)
+        ENDIF
+
+        !=== Recalc Upper Loop? ===!
+
+        IF ( icase /= 3 ) THEN
+           IF ( jndx == 0 ) CALL HELX_REAC (r,ip)
+           IF ( jndx /= 0 ) CALL LOOP_REAC (r,jndx)
+        ENDIF
+
+        !=== Recalc Lower Loop? ===!
+
+        IF ( iloop == 0 ) kndx = 0
+        IF ( iloop == 1 ) kndx = r% link(j)
+
+        IF ( kndx /= 0 ) CALL LOOP_REAC (r,kndx)
+
+        early_ret = .TRUE.
+        RETURN
+
+     ENDIF
+
+  ENDIF
+  
+END SUBROUTINE HELIX_EXTEND
