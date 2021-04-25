@@ -125,37 +125,8 @@ SUBROUTINE LOOP_FIRE (R,INDX,AMAX)
 
                     IF ( atot >= amax ) THEN
 
-                       nl = nl + 1
 
-                       r% ibsp(k) = kp
-                       r% ibsp(kp)= k
-                       r% nl = nl
-
-                       IF ( nl > nsum ) THEN
-                          r% nsum = 2 * nsum
-                       ENDIF
-
-                       IF ( k < kp ) THEN
-                          r% loop(nl) = k
-                          r% link(k)  = nl
-                          r% link(kp) = indx
-                       ELSE
-                          r% loop(nl) = kp
-                          r% link(k)  = indx
-                          r% link(kp) = nl
-                       ENDIF
-
-                       !=== Fix Links in New Loop ===!
-
-                       mh = 1
-                       ms = 0
-
-                       ip = MIN(k,kp)
-                       jp = ip + 1
-
-                       jndx = r% link(ip)
-
-                       CALL NUCLEATION(r, indx, ip, jndx, jp, mh, ms)
+                       CALL NUCLEATION(r, indx, ip, jndx, jp, k, kp, mh, ms, nl, nsum)
 
                        r% nhlx(indx) = nh - mh + 2
                        r% nsgl(indx) = ns - ms - 2
@@ -1172,15 +1143,49 @@ SUBROUTINE LOOP_FIRE (R,INDX,AMAX)
 
 END SUBROUTINE LOOP_FIRE
 
-SUBROUTINE NUCLEATION(r, indx, ip, jndx, jp, mh, ms)
+SUBROUTINE NUCLEATION(r, indx, ip, jndx, jp, k, kp, mh, ms, nl, nsum)
 
   IMPLICIT NONE
 
   TYPE(RNA_STRUC), INTENT(INOUT) :: r
-  INTEGER, INTENT(IN) :: indx, ip
-  INTEGER, INTENT(IN) :: jndx
+  INTEGER, INTENT(IN) :: indx
+  INTEGER, INTENT(INOUT) :: ip
+  INTEGER, INTENT(OUT) :: jndx
   INTEGER, INTENT(INOUT) :: jp
+  INTEGER, INTENT(IN) :: k, kp
   INTEGER, INTENT(INOUT) :: mh, ms
+  INTEGER, INTENT(INOUT) :: nl
+  INTEGER, INTENT(IN) :: nsum
+  
+  nl = nl + 1
+
+  r% ibsp(k) = kp
+  r% ibsp(kp)= k
+  r% nl = nl
+
+  IF ( nl > nsum ) THEN
+     r% nsum = 2 * nsum
+  ENDIF
+
+  IF ( k < kp ) THEN
+     r% loop(nl) = k
+     r% link(k)  = nl
+     r% link(kp) = indx
+  ELSE
+     r% loop(nl) = kp
+     r% link(k)  = indx
+     r% link(kp) = nl
+  ENDIF
+
+  !=== Fix Links in New Loop ===!
+
+  mh = 1
+  ms = 0
+
+  ip = MIN(k,kp)
+  jp = ip + 1
+
+  jndx = r% link(ip)
   
   DO WHILE ( jp < r% ibsp(ip) )
 
