@@ -54,6 +54,7 @@ SUBROUTINE LOOP_FIRE (R,INDX,AMAX)
 
   DOUBLE PRECISION :: x,dg,atot
 
+  LOGICAL :: early_ret
 
   i = r% loop(indx)
   j = r% ibsp(i)
@@ -125,26 +126,10 @@ SUBROUTINE LOOP_FIRE (R,INDX,AMAX)
 
                     IF ( atot >= amax ) THEN
 
-
-                       CALL NUCLEATION(r, indx, ip, jndx, jp, k, kp, mh, ms, nl, nsum)
-
-                       r% nhlx(indx) = nh - mh + 2
-                       r% nsgl(indx) = ns - ms - 2
-
-                       r% nhlx(jndx) = mh
-                       r% nsgl(jndx) = ms
-
-                       CALL LOOP_REAC (r,indx)
-                       CALL LOOP_REAC (r,jndx)
-
-                       !=== Recalc Lower Loop? ===!
-
-                       IF ( iloop == 0 ) kndx = 0
-                       IF ( iloop == 1 ) kndx = r% link(j)
-
-                       IF ( kndx /= 0 ) CALL LOOP_REAC (r,kndx)
-
-                       RETURN
+                       CALL NUCLEATION(r, iloop, indx, ip, jndx, j, jp, k, kndx, kp, mh, ms, nh, nl, ns, nsum, early_ret)
+                       IF (early_ret) THEN
+                          RETURN
+                       ENDIF
 
                     ENDIF
 
@@ -1143,19 +1128,25 @@ SUBROUTINE LOOP_FIRE (R,INDX,AMAX)
 
 END SUBROUTINE LOOP_FIRE
 
-SUBROUTINE NUCLEATION(r, indx, ip, jndx, jp, k, kp, mh, ms, nl, nsum)
+SUBROUTINE NUCLEATION(r, iloop, indx, ip, jndx, j, jp, k, kndx, kp, mh, ms, nh, nl, ns, nsum, early_ret)
 
   IMPLICIT NONE
 
   TYPE(RNA_STRUC), INTENT(INOUT) :: r
-  INTEGER, INTENT(IN) :: indx
+  INTEGER, INTENT(IN) :: iloop, indx
   INTEGER, INTENT(INOUT) :: ip
+  INTEGER, INTENT(IN) :: j
   INTEGER, INTENT(OUT) :: jndx
   INTEGER, INTENT(INOUT) :: jp
   INTEGER, INTENT(IN) :: k, kp
+  INTEGER, INTENT(INOUT) :: kndx
   INTEGER, INTENT(INOUT) :: mh, ms
+  INTEGER, INTENT(IN) :: nh
   INTEGER, INTENT(INOUT) :: nl
-  INTEGER, INTENT(IN) :: nsum
+  INTEGER, INTENT(IN) :: nsum, ns
+  LOGICAL, INTENT(OUT) :: early_ret
+
+  early_ret = .FALSE.
   
   nl = nl + 1
 
@@ -1203,5 +1194,24 @@ SUBROUTINE NUCLEATION(r, indx, ip, jndx, jp, k, kp, mh, ms, nl, nsum)
      ENDIF
 
   ENDDO
+
+  r% nhlx(indx) = nh - mh + 2
+  r% nsgl(indx) = ns - ms - 2
+
+  r% nhlx(jndx) = mh
+  r% nsgl(jndx) = ms
+
+  CALL LOOP_REAC (r,indx)
+  CALL LOOP_REAC (r,jndx)
+
+  !=== Recalc Lower Loop? ===!
+
+  IF ( iloop == 0 ) kndx = 0
+  IF ( iloop == 1 ) kndx = r% link(j)
+
+  IF ( kndx /= 0 ) CALL LOOP_REAC (r,kndx)
+
+  early_ret = .TRUE.
+  RETURN
 
 END SUBROUTINE NUCLEATION
