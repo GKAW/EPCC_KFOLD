@@ -99,51 +99,10 @@ SUBROUTINE LOOP_FIRE (R,INDX,AMAX)
 
      !=== Nucleation Events ===!
 
-     IF ( r% ibsp(k) == 0 ) THEN
-        IF ( atot + r% wrk1(k) >= amax ) THEN
-
-           l = 2
-           lmx = nt / 2 + 1
-
-           IF ( MOD(nt,2) == 0 ) THEN
-              IF ( icnt+1 > lmx-1 ) lmx = lmx - 1
-           ENDIF
-
-           IF ( iloop ==  0 ) lmx = nt - icnt
-
-           kp = k + 1
-           is = r% iseq(k)
-
-           DO WHILE ( l <= lmx )
-
-              IF ( r% ibsp(kp) == 0 ) THEN
-
-                 js = r% iseq(kp)
-
-                 IF ( l > 4 .and. iwc(is,js) == 1 ) THEN
-
-                    CALL NUCLEATION(r, amax, atot, iloop, indx, ip, jndx, j, jp, k, kndx, kp, l, &
-                         mh, ms, nh, nl, ns, nsum, early_ret)
-                    IF (early_ret) THEN
-                       RETURN
-                    ENDIF
-
-                 ENDIF
-
-              ELSE
-
-                 l = l + 1
-                 kp = r% ibsp(kp)
-
-              ENDIF
-
-              l = l + 1
-              kp = kp + 1
-
-           ENDDO
-
-        ENDIF
-        atot = atot + r% wrk1(k)
+     CALL NUCLEATION(r, amax, atot, icnt, iloop, indx, ip, is, jndx, j, jp, js, &
+          k, kndx, kp, l, mh, ms, nh, nl, ns, nsum, nt, early_ret)
+     IF (early_ret) THEN
+        RETURN
      ENDIF
 
 
@@ -1123,103 +1082,150 @@ SUBROUTINE LOOP_FIRE (R,INDX,AMAX)
 
 END SUBROUTINE LOOP_FIRE
 
-SUBROUTINE NUCLEATION(r, amax, atot, iloop, indx, ip, jndx, j, jp, k, kndx, kp, l, mh, ms, nh, nl, ns, nsum, early_ret)
+SUBROUTINE NUCLEATION(r, amax, atot, icnt, iloop, indx, ip, is, jndx, j, jp, js, &
+     k, kndx, kp, l, mh, ms, nh, nl, ns, nsum, nt, early_ret)
 
   IMPLICIT NONE
 
   TYPE(RNA_STRUC), INTENT(INOUT) :: r
   DOUBLE PRECISION, INTENT(IN) :: amax
   DOUBLE PRECISION, INTENT(INOUT) :: atot
-  
-  INTEGER, INTENT(IN) :: iloop, indx
+
+  INTEGER, INTENT(IN) :: icnt, iloop, indx
   INTEGER, INTENT(INOUT) :: ip
+  INTEGER, INTENT(OUT) :: is
   INTEGER, INTENT(IN) :: j
   INTEGER, INTENT(OUT) :: jndx
   INTEGER, INTENT(INOUT) :: jp
-  INTEGER, INTENT(IN) :: k, kp
-  INTEGER, INTENT(INOUT) :: kndx
-  INTEGER, INTENT(IN) :: l
+  INTEGER, INTENT(OUT) :: js
+  INTEGER, INTENT(IN) :: k
+  INTEGER, INTENT(INOUT) :: kndx, kp
+  INTEGER, INTENT(INOUT) :: l
   INTEGER, INTENT(INOUT) :: mh, ms
   INTEGER, INTENT(IN) :: nh
   INTEGER, INTENT(INOUT) :: nl
-  INTEGER, INTENT(IN) :: nsum, ns
+  INTEGER, INTENT(IN) :: nsum, ns, nt
   LOGICAL, INTENT(OUT) :: early_ret
+
+  !! LOCALS
+  INTEGER :: lmx
 
   !! Initialise
   early_ret = .FALSE.
 
   !! Subroutine body
+  IF ( r% ibsp(k) == 0 ) THEN
+     IF ( atot + r% wrk1(k) >= amax ) THEN
 
-  atot = atot + pnuc(l)
+        l = 2
+        lmx = nt / 2 + 1
 
-  IF ( atot >= amax ) THEN
-
-     nl = nl + 1
-
-     r% ibsp(k) = kp
-     r% ibsp(kp)= k
-     r% nl = nl
-
-     IF ( nl > nsum ) THEN
-        r% nsum = 2 * nsum
-     ENDIF
-
-     IF ( k < kp ) THEN
-        r% loop(nl) = k
-        r% link(k)  = nl
-        r% link(kp) = indx
-     ELSE
-        r% loop(nl) = kp
-        r% link(k)  = indx
-        r% link(kp) = nl
-     ENDIF
-
-     !=== Fix Links in New Loop ===!
-
-     mh = 1
-     ms = 0
-
-     ip = MIN(k,kp)
-     jp = ip + 1
-
-     jndx = r% link(ip)
-
-     DO WHILE ( jp < r% ibsp(ip) )
-
-        IF ( r% link(jp) == indx ) THEN
-           r% link(jp) = jndx
+        IF ( MOD(nt,2) == 0 ) THEN
+           IF ( icnt+1 > lmx-1 ) lmx = lmx - 1
         ENDIF
 
-        IF ( r% ibsp(jp) > jp ) mh = mh + 1
-        IF ( r% ibsp(jp) == 0 ) ms = ms + 1
+        IF ( iloop ==  0 ) lmx = nt - icnt
 
-        IF ( r% ibsp(jp) > jp ) THEN
-           jp = r% ibsp(jp)
-        ELSE
-           jp = jp + 1
-        ENDIF
+        kp = k + 1
+        is = r% iseq(k)
 
-     ENDDO
+        DO WHILE ( l <= lmx )
 
-     r% nhlx(indx) = nh - mh + 2
-     r% nsgl(indx) = ns - ms - 2
+           IF ( r% ibsp(kp) == 0 ) THEN
 
-     r% nhlx(jndx) = mh
-     r% nsgl(jndx) = ms
+              js = r% iseq(kp)
 
-     CALL LOOP_REAC (r,indx)
-     CALL LOOP_REAC (r,jndx)
+              IF ( l > 4 .and. iwc(is,js) == 1 ) THEN
 
-     !=== Recalc Lower Loop? ===!
 
-     IF ( iloop == 0 ) kndx = 0
-     IF ( iloop == 1 ) kndx = r% link(j)
+                 atot = atot + pnuc(l)
 
-     IF ( kndx /= 0 ) CALL LOOP_REAC (r,kndx)
+                 IF ( atot >= amax ) THEN
 
-     early_ret = .TRUE.
-     RETURN
+                    nl = nl + 1
 
+                    r% ibsp(k) = kp
+                    r% ibsp(kp)= k
+                    r% nl = nl
+
+                    IF ( nl > nsum ) THEN
+                       r% nsum = 2 * nsum
+                    ENDIF
+
+                    IF ( k < kp ) THEN
+                       r% loop(nl) = k
+                       r% link(k)  = nl
+                       r% link(kp) = indx
+                    ELSE
+                       r% loop(nl) = kp
+                       r% link(k)  = indx
+                       r% link(kp) = nl
+                    ENDIF
+
+                    !=== Fix Links in New Loop ===!
+
+                    mh = 1
+                    ms = 0
+
+                    ip = MIN(k,kp)
+                    jp = ip + 1
+
+                    jndx = r% link(ip)
+
+                    DO WHILE ( jp < r% ibsp(ip) )
+
+                       IF ( r% link(jp) == indx ) THEN
+                          r% link(jp) = jndx
+                       ENDIF
+
+                       IF ( r% ibsp(jp) > jp ) mh = mh + 1
+                       IF ( r% ibsp(jp) == 0 ) ms = ms + 1
+
+                       IF ( r% ibsp(jp) > jp ) THEN
+                          jp = r% ibsp(jp)
+                       ELSE
+                          jp = jp + 1
+                       ENDIF
+
+                    ENDDO
+
+                    r% nhlx(indx) = nh - mh + 2
+                    r% nsgl(indx) = ns - ms - 2
+
+                    r% nhlx(jndx) = mh
+                    r% nsgl(jndx) = ms
+
+                    CALL LOOP_REAC (r,indx)
+                    CALL LOOP_REAC (r,jndx)
+
+                    !=== Recalc Lower Loop? ===!
+
+                    IF ( iloop == 0 ) kndx = 0
+                    IF ( iloop == 1 ) kndx = r% link(j)
+
+                    IF ( kndx /= 0 ) CALL LOOP_REAC (r,kndx)
+
+                    early_ret = .TRUE.
+                    RETURN
+
+                 ENDIF
+
+              ENDIF
+
+           ELSE
+
+              l = l + 1
+              kp = r% ibsp(kp)
+
+           ENDIF
+
+           l = l + 1
+           kp = kp + 1
+
+        ENDDO
+
+     ENDIF
+     atot = atot + r% wrk1(k)
   ENDIF
 
 END SUBROUTINE NUCLEATION
