@@ -191,7 +191,11 @@ SUBROUTINE LOOP_FIRE (R,INDX,AMAX)
 
                     atot = atot + x
 
-                    IF ( atot >= amax ) GOTO 1
+                    IF ( atot >= amax ) THEN
+                       CALL ADJUST_BP(r, amax, atot, dg, i, icase, iloop, indx, ip, is, j, jndx, jp, js, &
+                            k, ke, kndx, kp, l, mh, ms, n, nh, nl, ns, nsum)
+                       RETURN
+                    ENDIF
 
                  ENDIF
 
@@ -219,7 +223,11 @@ SUBROUTINE LOOP_FIRE (R,INDX,AMAX)
 
                     atot = atot + x
 
-                    IF ( atot >= amax ) GOTO 1
+                    IF ( atot >= amax ) THEN
+                       CALL ADJUST_BP(r, amax, atot, dg, i, icase, iloop, indx, ip, is, j, jndx, jp, js, &
+                            k, ke, kndx, kp, l, mh, ms, n, nh, nl, ns, nsum)
+                       RETURN
+                    ENDIF
 
                  ENDIF
 
@@ -269,7 +277,11 @@ SUBROUTINE LOOP_FIRE (R,INDX,AMAX)
 
                  atot = atot + x
 
-                 IF ( atot >= amax ) GOTO 1
+                 IF ( atot >= amax ) THEN
+                    CALL ADJUST_BP(r, amax, atot, dg, i, icase, iloop, indx, ip, is, j, jndx, jp, js, &
+                         k, ke, kndx, kp, l, mh, ms, n, nh, nl, ns, nsum)
+                    RETURN
+                 ENDIF
 
               ENDIF
 
@@ -295,7 +307,11 @@ SUBROUTINE LOOP_FIRE (R,INDX,AMAX)
 
                  atot = atot + x
 
-                 IF ( atot >= amax ) GOTO 1
+                 IF ( atot >= amax ) THEN
+                    CALL ADJUST_BP(r, amax, atot, dg, i, icase, iloop, indx, ip, is, j, jndx, jp, js, &
+                         k, ke, kndx, kp, l, mh, ms, n, nh, nl, ns, nsum)
+                    RETURN
+                 ENDIF
 
               ENDIF
 
@@ -303,288 +319,6 @@ SUBROUTINE LOOP_FIRE (R,INDX,AMAX)
 
         ENDIF
 
-1       IF ( atot >= amax ) THEN
-
-           !=== Adjust Base-Pairs ===!
-
-           IF ( kp == ip+1 .or. kp == ip-1 ) THEN
-              r% ibsp(ip) = 0
-              r% ibsp(jp) = kp
-              r% ibsp(kp) = jp
-           ELSE
-              r% ibsp(ip) = kp
-              r% ibsp(jp) = 0
-              r% ibsp(kp) = ip
-           ENDIF
-
-           IF ( icase == 1 ) THEN
-
-              jndx = r% link(ip)
-
-              IF ( kp == ip+1 .or. kp == ip-1 ) THEN
-                 r% loop(jndx) = kp
-                 r% link(kp) = r% link(ip)
-                 r% link(ip) = 0
-              ELSE
-                 r% link(kp) = r%link(jp)
-                 r% link(jp) = 0
-              ENDIF
-
-              IF ( kp == ip+1 .or. kp == jp-1 ) THEN
-                 r% nsgl(indx) = r% nsgl(indx) + 1
-                 r% nsgl(jndx) = r% nsgl(jndx) - 1
-              ELSE
-                 r% nsgl(indx) = r% nsgl(indx) - 1
-                 r% nsgl(jndx) = r% nsgl(jndx) + 1
-              ENDIF
-
-              CALL LOOP_REAC (r,indx)
-              CALL LOOP_REAC (r,jndx)
-
-              !=== Recalc Lower Loop? ==!
-
-              IF ( iloop == 0 ) kndx = 0
-              IF ( iloop == 1 ) kndx = r% link(j)
-
-              IF ( kndx /= 0 ) CALL LOOP_REAC (r,kndx)
-
-           ELSEIF ( icase == 2 ) THEN
-
-              !=== Add Loop ===!
-
-              nl = nl + 1
-
-              r% nl = nl
-
-              r% link(jp-1) = nl
-
-              IF ( nl > nsum ) THEN
-                 r% nsum = 2 * nsum
-              ENDIF
-
-              IF ( kp == jp+1 ) THEN
-                 r% link(ip) = nl
-                 r% link(jp+1) = r% link(jp)
-                 r% link(jp) = 0
-              ELSE
-                 r% link(kp) = nl
-              ENDIF
-
-              IF ( iloop == 1 .and. k == ke ) THEN
-                 r% loop(nl) = i - 1
-                 IF ( kp == jp+1 ) THEN
-                    r% loop(indx) = i + 1
-                 ENDIF
-              ELSEIF ( kp == ip-1 ) THEN
-                 r% loop(nl) = kp
-              ELSE
-                 r% loop(nl) = ip
-              ENDIF
-
-              r% nsgl(indx) = ns - 1
-              r% nhlx(nl) = 2
-              r% nsgl(nl) = 1
-
-              CALL LOOP_REAC (r,indx)
-              CALL LOOP_REAC (r,nl)
-
-              !=== Recalc Upper Loop? ===!
-
-              jndx = r% link(ip+1)
-              IF ( jndx /= 0 ) CALL LOOP_REAC (r,jndx)
-
-              IF ( iloop == 0 .or. k /= ke ) THEN
-                 IF ( jndx == 0 ) CALL HELX_REAC (r,ip+1)
-              ENDIF
-
-              !=== Recalc Lower Loop? ===!
-
-              IF ( iloop == 0 ) kndx = 0
-              IF ( iloop == 1 ) kndx = r% link(j)
-
-              IF ( kndx /= 0 ) CALL LOOP_REAC (r,kndx)
-
-           ELSEIF ( icase == 3 ) THEN
-
-              !=== Move Loop ===!
-
-              r% link(jp-1) = r% link(jp)
-              r% link(jp) = 0
-
-              IF ( kp == jp+1 ) THEN
-                 r% link(ip) = r% link(ip-1)
-                 r% link(ip-1) = 0
-              ELSE
-                 r% link(ip-1) = r% link(ip-2)
-                 r% link(ip-2) = 0
-              ENDIF
-
-              IF ( k == ke ) THEN
-
-                 r% loop(indx) = i-1
-
-                 kndx = r% link(ip+1)
-
-                 IF ( kp == ip-1 ) jndx = r% link(i+1)
-                 IF ( kp == jp+1 ) jndx = r% link(i+2)
-
-                 IF ( jndx == 0 ) CALL HELX_REAC (r,j-1)
-
-              ELSE
-
-                 r% loop(indx) = i+1
-
-                 jndx = r% link(ip+1)
-                 kndx = r% link(j)
-
-                 IF ( jndx == 0 ) CALL HELX_REAC (r,ip+1)
-
-              ENDIF
-
-              CALL LOOP_REAC (r,indx)
-
-              IF ( jndx /= 0 ) CALL LOOP_REAC (r,jndx)
-              IF ( kndx /= 0 ) CALL LOOP_REAC (r,kndx)
-
-           ELSEIF ( icase == 4 ) THEN
-
-              !=== Delete Loop ===!
-
-              IF ( kp == ip+1 ) THEN
-
-                 jndx = r% link(ip)
-
-                 r% nsgl(indx) = r% nsgl(indx) + 1
-
-                 r% link(ip)  = 0
-                 r% link(jp-1)= 0
-
-                 CALL LOOP_REAC (r,indx)
-
-                 !=== Recalc Upper Loop? ===!
-
-                 kndx = r% link(ip+2)
-
-                 IF ( kndx /= 0 ) CALL LOOP_REAC (r,kndx)
-                 IF ( kndx == 0 ) CALL HELX_REAC (r,ip+2)
-
-                 !=== Recalc Lower Loop? ===!
-
-                 IF ( iloop == 0 ) kndx = 0
-                 IF ( iloop == 1 ) kndx = r% link(j)
-
-                 IF ( kndx /= 0 ) CALL LOOP_REAC (r,kndx)
-
-              ELSEIF ( kp == jp-1 ) THEN
-
-                 jndx = r% link(ip)
-
-                 r% nsgl(indx) = r% nsgl(indx) + 1
-
-                 r% link(jp-1)= r% link(jp)
-                 r% link(ip)  = 0
-                 r% link(jp)  = 0
-                 r% link(jp-2)= 0
-
-                 CALL LOOP_REAC (r,indx)
-
-                 !=== Recalc Upper Loop? ===!
-
-                 kndx = r% link(ip+1)
-
-                 IF ( kndx /= 0 ) CALL LOOP_REAC (r,kndx)
-                 IF ( kndx == 0 ) CALL HELX_REAC (r,ip+1)
-
-                 !=== Recalc Lower Loop? ===!
-
-                 IF ( iloop == 0 ) kndx = 0
-                 IF ( iloop == 1 ) kndx = r% link(j)
-
-                 IF ( kndx /= 0 ) CALL LOOP_REAC (r,kndx)
-
-              ELSE
-
-                 jndx = r% link(ip)
-                 kndx = r% link(j)
-
-                 r% nsgl(jndx) = r% nsgl(jndx) + 1
-
-                 r% link(i) = 0
-                 r% link(jp)= 0
-
-                 IF ( kp == ip-1 ) THEN
-                    r% loop(jndx) = ip - 1
-                    r% link(ip-1) = r% link(ip)
-                    r% link(ip) = 0
-                 ENDIF
-
-                 !=== Recalc Loops ===!
-
-                 CALL LOOP_REAC (r,jndx)
-
-                 IF ( kndx /= 0 ) CALL LOOP_REAC (r,kndx)
-
-                 jndx = indx
-
-              ENDIF
-
-              !=== Delete Loop jndx ===!
-
-              !=== Copy Loop nl to jndx ===!
-
-              IF ( jndx /= nl ) THEN
-
-                 r% loop(jndx) = r% loop(nl)
-                 r% nhlx(jndx) = r% nhlx(nl)
-                 r% nsgl(jndx) = r% nsgl(nl)
-                 r% ptot(jndx) = r% ptot(nl)
-
-                 CALL LOOP_RESUM (r,jndx)
-
-                 is = r% loop(nl)
-
-                 r% link(is) = jndx
-
-                 l = is + 1
-
-                 DO WHILE ( l < r% ibsp(is) )
-
-                    IF ( r% link(l) == nl ) THEN
-                       r% link(l) = jndx
-                    ENDIF
-
-                    IF ( r% ibsp(l) > l ) THEN
-                       l = r% ibsp(l)
-                    ELSE
-                       l = l + 1
-                    ENDIF
-
-                 ENDDO
-
-              ENDIF
-
-              r% loop(nl) = 0
-              r% nhlx(nl) = 0
-              r% nsgl(nl) = 0
-              r% ptot(nl) = 0.0d0
-
-              CALL LOOP_RESUM (r,nl)
-
-              r% nl = nl - 1
-
-              IF ( nsum > 2 ) THEN
-                 IF ( r% nl <= nsum / 2 ) THEN
-                    nsum = nsum / 2
-                    r% nsum = nsum
-                    r% psum(nsum) = 0.0d0
-                 ENDIF
-              ENDIF
-
-           ENDIF
-
-           RETURN
-
-        ENDIF
 
         !=== Open BP Inside Helix ===!
 
@@ -1328,3 +1062,309 @@ SUBROUTINE HELIX_MORPH(r, amax, atot, dg, i, icase, iloop, indx, ip, is, j, jndx
   ENDIF
 
 END SUBROUTINE HELIX_MORPH
+
+SUBROUTINE ADJUST_BP(r, amax, atot, dg, i, icase, iloop, indx, ip, is, j, jndx, jp, js, &
+     k, ke, kndx, kp, l, mh, ms, n, nh, nl, ns, nsum)
+
+  IMPLICIT NONE
+
+  TYPE(RNA_STRUC), INTENT(INOUT) :: r
+  DOUBLE PRECISION, INTENT(IN) :: amax
+  DOUBLE PRECISION, INTENT(INOUT) :: atot
+  DOUBLE PRECISION, INTENT(OUT) :: dg
+  
+  INTEGER, INTENT(IN) :: i, iloop, indx, ip
+  INTEGER, INTENT(INOUT) :: icase, is
+  INTEGER, INTENT(IN) :: j, jp
+  INTEGER, INTENT(INOUT) :: jndx, js
+  INTEGER, INTENT(IN) :: k, ke
+  INTEGER, INTENT(INOUT) :: kndx, kp
+  INTEGER, INTENT(INOUT) :: l
+  INTEGER, INTENT(INOUT) :: mh, ms
+  INTEGER, INTENT(IN) :: n, nh
+  INTEGER, INTENT(INOUT) :: nl, nsum, ns
+  
+  IF ( atot >= amax ) THEN
+
+   !=== Adjust Base-Pairs ===!
+
+     IF ( kp == ip+1 .or. kp == ip-1 ) THEN
+        r% ibsp(ip) = 0
+        r% ibsp(jp) = kp
+        r% ibsp(kp) = jp
+     ELSE
+        r% ibsp(ip) = kp
+        r% ibsp(jp) = 0
+        r% ibsp(kp) = ip
+     ENDIF
+
+     IF ( icase == 1 ) THEN
+
+        jndx = r% link(ip)
+
+        IF ( kp == ip+1 .or. kp == ip-1 ) THEN
+           r% loop(jndx) = kp
+           r% link(kp) = r% link(ip)
+           r% link(ip) = 0
+        ELSE
+           r% link(kp) = r%link(jp)
+           r% link(jp) = 0
+        ENDIF
+
+        IF ( kp == ip+1 .or. kp == jp-1 ) THEN
+           r% nsgl(indx) = r% nsgl(indx) + 1
+           r% nsgl(jndx) = r% nsgl(jndx) - 1
+        ELSE
+           r% nsgl(indx) = r% nsgl(indx) - 1
+           r% nsgl(jndx) = r% nsgl(jndx) + 1
+        ENDIF
+
+        CALL LOOP_REAC (r,indx)
+        CALL LOOP_REAC (r,jndx)
+
+        !=== Recalc Lower Loop? ==!
+
+        IF ( iloop == 0 ) kndx = 0
+        IF ( iloop == 1 ) kndx = r% link(j)
+
+        IF ( kndx /= 0 ) CALL LOOP_REAC (r,kndx)
+
+     ELSEIF ( icase == 2 ) THEN
+
+        !=== Add Loop ===!
+
+        nl = nl + 1
+
+        r% nl = nl
+
+        r% link(jp-1) = nl
+
+        IF ( nl > nsum ) THEN
+           r% nsum = 2 * nsum
+        ENDIF
+
+        IF ( kp == jp+1 ) THEN
+           r% link(ip) = nl
+           r% link(jp+1) = r% link(jp)
+           r% link(jp) = 0
+        ELSE
+           r% link(kp) = nl
+        ENDIF
+
+        IF ( iloop == 1 .and. k == ke ) THEN
+           r% loop(nl) = i - 1
+           IF ( kp == jp+1 ) THEN
+              r% loop(indx) = i + 1
+           ENDIF
+        ELSEIF ( kp == ip-1 ) THEN
+           r% loop(nl) = kp
+        ELSE
+           r% loop(nl) = ip
+        ENDIF
+
+        r% nsgl(indx) = ns - 1
+        r% nhlx(nl) = 2
+        r% nsgl(nl) = 1
+
+        CALL LOOP_REAC (r,indx)
+        CALL LOOP_REAC (r,nl)
+
+        !=== Recalc Upper Loop? ===!
+
+        jndx = r% link(ip+1)
+        IF ( jndx /= 0 ) CALL LOOP_REAC (r,jndx)
+
+        IF ( iloop == 0 .or. k /= ke ) THEN
+           IF ( jndx == 0 ) CALL HELX_REAC (r,ip+1)
+        ENDIF
+
+        !=== Recalc Lower Loop? ===!
+
+        IF ( iloop == 0 ) kndx = 0
+        IF ( iloop == 1 ) kndx = r% link(j)
+
+        IF ( kndx /= 0 ) CALL LOOP_REAC (r,kndx)
+
+     ELSEIF ( icase == 3 ) THEN
+
+        !=== Move Loop ===!
+
+        r% link(jp-1) = r% link(jp)
+        r% link(jp) = 0
+
+        IF ( kp == jp+1 ) THEN
+           r% link(ip) = r% link(ip-1)
+           r% link(ip-1) = 0
+        ELSE
+           r% link(ip-1) = r% link(ip-2)
+           r% link(ip-2) = 0
+        ENDIF
+
+        IF ( k == ke ) THEN
+
+           r% loop(indx) = i-1
+
+           kndx = r% link(ip+1)
+
+           IF ( kp == ip-1 ) jndx = r% link(i+1)
+           IF ( kp == jp+1 ) jndx = r% link(i+2)
+
+           IF ( jndx == 0 ) CALL HELX_REAC (r,j-1)
+
+        ELSE
+
+           r% loop(indx) = i+1
+
+           jndx = r% link(ip+1)
+           kndx = r% link(j)
+
+           IF ( jndx == 0 ) CALL HELX_REAC (r,ip+1)
+
+        ENDIF
+
+        CALL LOOP_REAC (r,indx)
+
+        IF ( jndx /= 0 ) CALL LOOP_REAC (r,jndx)
+        IF ( kndx /= 0 ) CALL LOOP_REAC (r,kndx)
+
+     ELSEIF ( icase == 4 ) THEN
+
+        !=== Delete Loop ===!
+
+        IF ( kp == ip+1 ) THEN
+
+           jndx = r% link(ip)
+
+           r% nsgl(indx) = r% nsgl(indx) + 1
+
+           r% link(ip)  = 0
+           r% link(jp-1)= 0
+
+           CALL LOOP_REAC (r,indx)
+
+           !=== Recalc Upper Loop? ===!
+
+           kndx = r% link(ip+2)
+
+           IF ( kndx /= 0 ) CALL LOOP_REAC (r,kndx)
+           IF ( kndx == 0 ) CALL HELX_REAC (r,ip+2)
+
+           !=== Recalc Lower Loop? ===!
+
+           IF ( iloop == 0 ) kndx = 0
+           IF ( iloop == 1 ) kndx = r% link(j)
+
+           IF ( kndx /= 0 ) CALL LOOP_REAC (r,kndx)
+
+        ELSEIF ( kp == jp-1 ) THEN
+
+           jndx = r% link(ip)
+
+           r% nsgl(indx) = r% nsgl(indx) + 1
+
+           r% link(jp-1)= r% link(jp)
+           r% link(ip)  = 0
+           r% link(jp)  = 0
+           r% link(jp-2)= 0
+
+           CALL LOOP_REAC (r,indx)
+
+           !=== Recalc Upper Loop? ===!
+
+           kndx = r% link(ip+1)
+
+           IF ( kndx /= 0 ) CALL LOOP_REAC (r,kndx)
+           IF ( kndx == 0 ) CALL HELX_REAC (r,ip+1)
+
+           !=== Recalc Lower Loop? ===!
+
+           IF ( iloop == 0 ) kndx = 0
+           IF ( iloop == 1 ) kndx = r% link(j)
+
+           IF ( kndx /= 0 ) CALL LOOP_REAC (r,kndx)
+
+        ELSE
+
+           jndx = r% link(ip)
+           kndx = r% link(j)
+
+           r% nsgl(jndx) = r% nsgl(jndx) + 1
+
+           r% link(i) = 0
+           r% link(jp)= 0
+
+           IF ( kp == ip-1 ) THEN
+              r% loop(jndx) = ip - 1
+              r% link(ip-1) = r% link(ip)
+              r% link(ip) = 0
+           ENDIF
+
+           !=== Recalc Loops ===!
+
+           CALL LOOP_REAC (r,jndx)
+
+           IF ( kndx /= 0 ) CALL LOOP_REAC (r,kndx)
+
+           jndx = indx
+
+        ENDIF
+
+        !=== Delete Loop jndx ===!
+
+        !=== Copy Loop nl to jndx ===!
+
+        IF ( jndx /= nl ) THEN
+
+           r% loop(jndx) = r% loop(nl)
+           r% nhlx(jndx) = r% nhlx(nl)
+           r% nsgl(jndx) = r% nsgl(nl)
+           r% ptot(jndx) = r% ptot(nl)
+
+           CALL LOOP_RESUM (r,jndx)
+
+           is = r% loop(nl)
+
+           r% link(is) = jndx
+
+           l = is + 1
+
+           DO WHILE ( l < r% ibsp(is) )
+
+              IF ( r% link(l) == nl ) THEN
+                 r% link(l) = jndx
+              ENDIF
+
+              IF ( r% ibsp(l) > l ) THEN
+                 l = r% ibsp(l)
+              ELSE
+                 l = l + 1
+              ENDIF
+
+           ENDDO
+
+        ENDIF
+
+        r% loop(nl) = 0
+        r% nhlx(nl) = 0
+        r% nsgl(nl) = 0
+        r% ptot(nl) = 0.0d0
+
+        CALL LOOP_RESUM (r,nl)
+
+        r% nl = nl - 1
+
+        IF ( nsum > 2 ) THEN
+           IF ( r% nl <= nsum / 2 ) THEN
+              nsum = nsum / 2
+              r% nsum = nsum
+              r% psum(nsum) = 0.0d0
+           ENDIF
+        ENDIF
+
+     ENDIF
+
+     RETURN
+
+  ENDIF
+
+END SUBROUTINE ADJUST_BP
