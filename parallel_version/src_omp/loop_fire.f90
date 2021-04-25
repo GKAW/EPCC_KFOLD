@@ -126,179 +126,11 @@ SUBROUTINE LOOP_FIRE (R,INDX,AMAX)
         !=== Helix Retraction ===!
 
         icase = 0
-
-        IF ( ip /= n .and. jp /= 1 ) THEN
-
-           IF ( r% ibsp(ip+1) == jp-1 ) THEN
-
-              icase = 1
-
-              IF ( iloop == 1 ) THEN
-                 IF ( k == ke ) icase = 2
-              ENDIF
-
-           ELSEIF ( iloop == 0 .or. k /= ke ) THEN
-
-              l  = r% link(ip)
-              mh = r% nhlx(l)
-              ms = r% nsgl(l)
-
-              icase = 3
-
-           ENDIF
-
-        ENDIF
-
-        IF ( icase > 0 ) THEN
-
-           IF ( icase == 2 ) THEN
-              atot = atot + r% wrk1(ip)
-           ELSE
-              atot = atot + r% wrk1(jp)
-           ENDIF
-
-           IF ( atot >= amax ) THEN
-
-              r% ibsp(ip) = 0
-              r% ibsp(jp) = 0
-
-              IF ( icase == 1 ) THEN
-
-                 r% nsgl(indx) = ns + 2
-
-                 r% link(jp-1) = r% link(jp)
-                 IF ( jp /= n ) r% link(jp) = 0
-
-                 !=== Recalc Main Loop ===!
-
-                 CALL LOOP_REAC (r,indx)
-
-                 !=== Recalc Upper/Lower Loops? ===!
-
-                 jndx = r% link(ip+1)
-
-                 IF ( iloop == 0 ) kndx = 0
-                 IF ( iloop == 1 ) kndx = r% link(j)
-
-                 IF ( jndx == 0 ) CALL HELX_REAC (r,ip+1)
-                 IF ( jndx /= 0 ) CALL LOOP_REAC (r,jndx)
-                 IF ( kndx /= 0 ) CALL LOOP_REAC (r,kndx)
-
-              ELSEIF ( icase == 2 ) THEN
-
-                 r% nsgl(indx) = ns + 2
-                 r% loop(indx) = jp - 1
-
-                 r% link(jp-1) = r% link(jp)
-                 IF ( jp /= n ) r% link(jp) = 0
-
-                 !=== Recalc Main Loop ===!
-
-                 CALL LOOP_REAC (r,indx)
-
-                 !=== Recalc Lower Loop? ===!
-
-                 kndx = r% link(ip+1)
-
-                 IF ( kndx /= 0 ) CALL LOOP_REAC (r,kndx)
-
-              ELSEIF ( icase == 3 ) THEN
-
-                 r% nhlx(indx) = nh + mh - 2
-                 r% nsgl(indx) = ns + ms + 2
-
-                 jndx = r% link(ip)
-
-                 !=== Fix Links in Loop Being Deleted ===!
-
-                 l = ip + 1
-
-                 DO WHILE ( l < jp )
-
-                    IF ( r% link(l) == jndx ) THEN
-                       r% link(l) = indx
-                    ENDIF
-
-                    IF ( r% ibsp(l) > l ) THEN
-                       l = r% ibsp(l)
-                    ELSE
-                       l = l + 1
-                    ENDIF
-
-                 ENDDO
-
-                 !=== Copy Loop nl to jndx ===!
-
-                 IF ( jndx /= nl ) THEN
-
-                    r% loop(jndx) = r% loop(nl)
-                    r% nhlx(jndx) = r% nhlx(nl)
-                    r% nsgl(jndx) = r% nsgl(nl)
-                    r% ptot(jndx) = r% ptot(nl)
-
-                    CALL LOOP_RESUM (r,jndx)
-
-                    kp = r% loop(nl)
-
-                    r% link(kp) = jndx
-
-                    l = kp + 1
-
-                    DO WHILE ( l < r% ibsp(kp) )
-
-                       IF ( r% link(l) == nl ) THEN
-                          r% link(l) = jndx
-                       ENDIF
-
-                       IF ( r% ibsp(l) > l ) THEN
-                          l = r% ibsp(l)
-                       ELSE
-                          l = l + 1
-                       ENDIF
-
-                    ENDDO
-
-                 ENDIF
-
-                 IF ( indx /= nl ) jndx = indx
-
-                 r% link(ip) = 0
-                 IF ( jp /= n ) r% link(jp) = 0
-
-                 r% loop(nl) = 0
-                 r% nhlx(nl) = 0
-                 r% nsgl(nl) = 0
-                 r% ptot(nl) = 0.0d0
-
-                 CALL LOOP_RESUM (r,nl)
-
-                 r% nl = nl - 1
-
-                 IF ( nsum > 2 ) THEN
-                    IF ( r% nl <= nsum / 2 ) THEN
-                       nsum = nsum / 2
-                       r% nsum = nsum
-                       r% psum(nsum) = 0.0d0
-                    ENDIF
-                 ENDIF
-
-                 !=== Recalc Main Loop ===!
-
-                 CALL LOOP_REAC (r,jndx)
-
-                 !=== Recalc Lower Loop? ===!
-
-                 IF ( iloop == 0 ) kndx = 0
-                 IF ( iloop == 1 ) kndx = r% link(j)
-
-                 IF ( kndx /= 0 ) CALL LOOP_REAC (r,kndx)
-
-              ENDIF
-
-              RETURN
-
-           ENDIF
-
+        
+        CALL HELIX_RETRACT(r, amax, atot, i, icase, iloop, indx, ip, j, jndx, jp, js, &
+             k, ke, kndx, kp, l, mh, ms, n, nh, nl, ns, nsum, early_ret)
+        IF (early_ret) THEN
+           RETURN
         ENDIF
 
         icase = 0
@@ -1262,3 +1094,204 @@ SUBROUTINE HELIX_EXTEND(r, amax, atot, i, icase, iloop, indx, ip, is, j, jndx, j
   ENDIF
   
 END SUBROUTINE HELIX_EXTEND
+
+SUBROUTINE HELIX_RETRACT(r, amax, atot, i, icase, iloop, indx, ip, j, jndx, jp, js, &
+     k, ke, kndx, kp, l, mh, ms, n, nh, nl, ns, nsum, early_ret)
+
+  IMPLICIT NONE
+
+  TYPE(RNA_STRUC), INTENT(INOUT) :: r
+  DOUBLE PRECISION, INTENT(IN) :: amax
+  DOUBLE PRECISION, INTENT(INOUT) :: atot
+
+  INTEGER, INTENT(IN) :: i, iloop, indx, ip
+  INTEGER, INTENT(INOUT) :: icase
+  INTEGER, INTENT(IN) :: j, jp
+  INTEGER, INTENT(INOUT) :: jndx, js
+  INTEGER, INTENT(IN) :: k, ke
+  INTEGER, INTENT(INOUT) :: kndx, kp
+  INTEGER, INTENT(INOUT) :: l
+  INTEGER, INTENT(INOUT) :: mh, ms
+  INTEGER, INTENT(IN) :: n, nh, nl, ns
+  INTEGER, INTENT(INOUT) :: nsum
+
+  LOGICAL, INTENT(OUT) :: early_ret
+
+  early_ret = .FALSE.
+  
+  IF ( ip /= n .and. jp /= 1 ) THEN
+
+     IF ( r% ibsp(ip+1) == jp-1 ) THEN
+
+        icase = 1
+
+        IF ( iloop == 1 ) THEN
+           IF ( k == ke ) icase = 2
+        ENDIF
+
+     ELSEIF ( iloop == 0 .or. k /= ke ) THEN
+
+        l  = r% link(ip)
+        mh = r% nhlx(l)
+        ms = r% nsgl(l)
+
+        icase = 3
+
+     ENDIF
+
+  ENDIF
+
+  IF ( icase > 0 ) THEN
+
+     IF ( icase == 2 ) THEN
+        atot = atot + r% wrk1(ip)
+     ELSE
+        atot = atot + r% wrk1(jp)
+     ENDIF
+
+     IF ( atot >= amax ) THEN
+
+        r% ibsp(ip) = 0
+        r% ibsp(jp) = 0
+
+        IF ( icase == 1 ) THEN
+
+           r% nsgl(indx) = ns + 2
+
+           r% link(jp-1) = r% link(jp)
+           IF ( jp /= n ) r% link(jp) = 0
+
+           !=== Recalc Main Loop ===!
+
+           CALL LOOP_REAC (r,indx)
+
+           !=== Recalc Upper/Lower Loops? ===!
+
+           jndx = r% link(ip+1)
+
+           IF ( iloop == 0 ) kndx = 0
+           IF ( iloop == 1 ) kndx = r% link(j)
+
+           IF ( jndx == 0 ) CALL HELX_REAC (r,ip+1)
+           IF ( jndx /= 0 ) CALL LOOP_REAC (r,jndx)
+           IF ( kndx /= 0 ) CALL LOOP_REAC (r,kndx)
+
+        ELSEIF ( icase == 2 ) THEN
+
+           r% nsgl(indx) = ns + 2
+           r% loop(indx) = jp - 1
+
+           r% link(jp-1) = r% link(jp)
+           IF ( jp /= n ) r% link(jp) = 0
+
+           !=== Recalc Main Loop ===!
+
+           CALL LOOP_REAC (r,indx)
+
+           !=== Recalc Lower Loop? ===!
+
+           kndx = r% link(ip+1)
+
+           IF ( kndx /= 0 ) CALL LOOP_REAC (r,kndx)
+
+        ELSEIF ( icase == 3 ) THEN
+
+           r% nhlx(indx) = nh + mh - 2
+           r% nsgl(indx) = ns + ms + 2
+
+           jndx = r% link(ip)
+
+           !=== Fix Links in Loop Being Deleted ===!
+
+           l = ip + 1
+
+           DO WHILE ( l < jp )
+
+              IF ( r% link(l) == jndx ) THEN
+                 r% link(l) = indx
+              ENDIF
+
+              IF ( r% ibsp(l) > l ) THEN
+                 l = r% ibsp(l)
+              ELSE
+                 l = l + 1
+              ENDIF
+
+           ENDDO
+
+           !=== Copy Loop nl to jndx ===!
+
+           IF ( jndx /= nl ) THEN
+
+              r% loop(jndx) = r% loop(nl)
+              r% nhlx(jndx) = r% nhlx(nl)
+              r% nsgl(jndx) = r% nsgl(nl)
+              r% ptot(jndx) = r% ptot(nl)
+
+              CALL LOOP_RESUM (r,jndx)
+
+              kp = r% loop(nl)
+
+              r% link(kp) = jndx
+
+              l = kp + 1
+
+              DO WHILE ( l < r% ibsp(kp) )
+
+                 IF ( r% link(l) == nl ) THEN
+                    r% link(l) = jndx
+                 ENDIF
+
+                 IF ( r% ibsp(l) > l ) THEN
+                    l = r% ibsp(l)
+                 ELSE
+                    l = l + 1
+                 ENDIF
+
+              ENDDO
+
+           ENDIF
+
+           IF ( indx /= nl ) jndx = indx
+
+           r% link(ip) = 0
+           IF ( jp /= n ) r% link(jp) = 0
+
+           r% loop(nl) = 0
+           r% nhlx(nl) = 0
+           r% nsgl(nl) = 0
+           r% ptot(nl) = 0.0d0
+
+           CALL LOOP_RESUM (r,nl)
+
+           r% nl = nl - 1
+
+           IF ( nsum > 2 ) THEN
+              IF ( r% nl <= nsum / 2 ) THEN
+                 nsum = nsum / 2
+                 r% nsum = nsum
+                 r% psum(nsum) = 0.0d0
+              ENDIF
+           ENDIF
+
+           !=== Recalc Main Loop ===!
+
+           CALL LOOP_REAC (r,jndx)
+
+           !=== Recalc Lower Loop? ===!
+
+           IF ( iloop == 0 ) kndx = 0
+           IF ( iloop == 1 ) kndx = r% link(j)
+
+           IF ( kndx /= 0 ) CALL LOOP_REAC (r,kndx)
+
+        ENDIF
+
+        early_ret = .TRUE.
+        RETURN
+
+     ENDIF
+
+  ENDIF
+
+END SUBROUTINE HELIX_RETRACT
