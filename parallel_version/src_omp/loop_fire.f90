@@ -155,22 +155,7 @@ SUBROUTINE LOOP_FIRE (R,INDX,AMAX)
 
                        jndx = r% link(ip)
 
-                       DO WHILE ( jp < r% ibsp(ip) )
-
-                          IF ( r% link(jp) == indx ) THEN
-                             r% link(jp) = jndx
-                          ENDIF
-
-                          IF ( r% ibsp(jp) > jp ) mh = mh + 1
-                          IF ( r% ibsp(jp) == 0 ) ms = ms + 1
-
-                          IF ( r% ibsp(jp) > jp ) THEN
-                             jp = r% ibsp(jp)
-                          ELSE
-                             jp = jp + 1
-                          ENDIF
-
-                       ENDDO
+                       CALL NUCLEATION(r, indx, ip, jndx, jp, mh, ms)
 
                        r% nhlx(indx) = nh - mh + 2
                        r% nsgl(indx) = ns - ms - 2
@@ -1186,3 +1171,32 @@ SUBROUTINE LOOP_FIRE (R,INDX,AMAX)
   RETURN
 
 END SUBROUTINE LOOP_FIRE
+
+SUBROUTINE NUCLEATION(r, indx, ip, jndx, jp, mh, ms)
+
+  IMPLICIT NONE
+
+  TYPE(RNA_STRUC), INTENT(INOUT) :: r
+  INTEGER, INTENT(IN) :: indx, ip
+  INTEGER, INTENT(IN) :: jndx
+  INTEGER, INTENT(INOUT) :: jp
+  INTEGER, INTENT(INOUT) :: mh, ms
+  
+  DO WHILE ( jp < r% ibsp(ip) )
+
+     IF ( r% link(jp) == indx ) THEN
+        r% link(jp) = jndx
+     ENDIF
+
+     IF ( r% ibsp(jp) > jp ) mh = mh + 1
+     IF ( r% ibsp(jp) == 0 ) ms = ms + 1
+
+     IF ( r% ibsp(jp) > jp ) THEN
+        jp = r% ibsp(jp)
+     ELSE
+        jp = jp + 1
+     ENDIF
+
+  ENDDO
+
+END SUBROUTINE NUCLEATION
