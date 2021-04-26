@@ -66,16 +66,19 @@
 
         n = rna% nsum / 2
 
+        !!! STEP 1 !!!
         atot = rna% psum(n)
 
 
         !=== Compute Time Increment ===!
 
+        !!! STEP 2 (r2)!!!
         r = RANDOM(iseed)
 
         tau = DLOG(1.0d0/r)
         tau = tau / atot
 
+        !!! STEP 3 !!!
         time = time + tau
 
         !=== Output Current Structure? ===!
@@ -95,6 +98,7 @@
 
         !=== Fire Reaction ===!
 
+        !!! STEP 2 (r1)!!!
         r = RANDOM(iseed)
         amax = r * atot
 
@@ -126,6 +130,7 @@
 
         r = rna% ptot(i)
 
+        !!! STEP 4 (identify first loop element) !!!
         IF ( r >= amax ) THEN
 
           indx = i

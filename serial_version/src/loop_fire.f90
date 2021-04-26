@@ -34,6 +34,7 @@
 !
 ! ==============================================================================
 
+
       SUBROUTINE LOOP_FIRE (R,INDX,AMAX)
 
         IMPLICIT NONE
@@ -113,6 +114,7 @@
             kp = k + 1
             is = r% iseq(k)
 
+            !!! STEP 4 (calculate updated phi value on-the-fly) !!!
             DO WHILE ( l <= lmx )
 
               IF ( r% ibsp(kp) == 0 ) THEN
@@ -123,10 +125,13 @@
 
                   atot = atot + pnuc(l)
 
+                  !!! STEP 5 (return when amax reached) !!!
                   IF ( atot >= amax ) THEN
 
                     nl = nl + 1
 
+
+                    !!! STEP 6 (updating structure?) !!!
                     r% ibsp(k) = kp
                     r% ibsp(kp)= k
                     r% nl = nl
@@ -341,6 +346,7 @@
 
                 !=== Recalc Main Loop? ===!
 
+                !!! STEP 8 (recalculating things) !!!
                 IF ( icase /= 2 ) THEN
                   CALL LOOP_REAC (r,indx)
                 ENDIF
@@ -413,6 +419,7 @@
 
                   !=== Recalc Main Loop ===!
 
+                  !!! STEP 8 (recalculating things) !!!
                   CALL LOOP_REAC (r,indx)
 
                   !=== Recalc Upper/Lower Loops? ===!
@@ -436,6 +443,7 @@
 
                   !=== Recalc Main Loop ===!
 
+                  !!! STEP 8 (recalculating things) !!!
                   CALL LOOP_REAC (r,indx)
 
                   !=== Recalc Lower Loop? ===!
@@ -526,6 +534,7 @@
 
                   !=== Recalc Main Loop ===!
 
+                  !!! STEP 8 (recalculating things) !!!
                   CALL LOOP_REAC (r,jndx)
 
                   !=== Recalc Lower Loop? ===!
@@ -580,6 +589,7 @@
               x = beta * dg
               x = DEXP(-x) * ratem
 
+              !!! STEP 5 (calculating k0j) !!!
               atot = atot + x
 
               IF ( atot >= amax ) THEN
@@ -632,6 +642,7 @@
 
                 !=== Recalc Main Loop ===!
 
+                !!! STEP 8 (recalculating things) !!!
                 CALL LOOP_REAC (r,indx)
 
                 jndx = r% link(ip)
@@ -711,6 +722,7 @@
                   x = beta * dg
                   x = DEXP(-x) * rated
 
+                  !!! STEP 5 (calculating k0j) !!!
                   atot = atot + x
 
                   IF ( atot >= amax ) GOTO 1
@@ -739,6 +751,7 @@
                   x = beta * dg
                   x = DEXP(-x) * rated
 
+                  !!! STEP 5 (calculating k0j) !!!
                   atot = atot + x
 
                   IF ( atot >= amax ) GOTO 1
@@ -789,6 +802,7 @@
                   x = beta * dg
                   x = DEXP(-x) * rated
 
+                  !!! STEP 5 (calculating k0j) !!!
                   atot = atot + x
 
                   IF ( atot >= amax ) GOTO 1
@@ -815,6 +829,7 @@
                   x = beta * dg
                   x = DEXP(-x) * rated
 
+                  !!! STEP 5 (calculating k0j) !!!
                   atot = atot + x
 
                   IF ( atot >= amax ) GOTO 1
@@ -874,6 +889,7 @@
 
                 !=== Add Loop ===!
 
+                !!! STEP 7 (add loop?) !!!
                 nl = nl + 1
 
                 r% nl = nl
@@ -970,6 +986,7 @@
 
               ELSEIF ( icase == 4 ) THEN
 
+                !!! STEP 7 (subtract loop?) !!!
                 !=== Delete Loop ===!
 
                 IF ( kp == ip+1 ) THEN

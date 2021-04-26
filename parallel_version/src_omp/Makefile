@@ -5,8 +5,15 @@
 # Author: Eric C. Dykeman
 # Copyright (c) 2015 (Please Refer to LICENCE)
 
-F90 = f95
-FFLAGS =
+F90 = nvfortran
+FFLAGS = -acc -Minfo=accel
+
+# ---------------------------------------------------------------------
+# PROFILING
+# ---------------------------------------------------------------------
+NSYS=nsys profile
+NSYSFLAGS=--stats=true --force-overwrite=true
+
 
 # ---------------------------------------------------------------------
 # OBJECTS
@@ -41,6 +48,11 @@ clean:
 
 veryclean:
 	rm -f *.o *.mod *.x
+
+profile: kfold
+	$(NSYS) $(NSYSFLAGS) -o ../../profiles/omp-report ./Kfold.x -i ../../examples/rbs/rbs_0000.start -o ../../outputs/rbs_0000.traj -l ../../outputs/rbs_0000.log -s 1234 -n 180 -t 10000
+
+	
 
 # ---------------------------------------------------------------------
 # COMPILE COMMANDS

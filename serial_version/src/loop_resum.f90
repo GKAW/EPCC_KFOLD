@@ -51,6 +51,7 @@
 
         !=== Resum Partial Sum Table ===!
 
+        !!! STEP 8 (resum partial sum table)!!!
         n = 1
         n1= 2
         n2= 4
