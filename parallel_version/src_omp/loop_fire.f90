@@ -159,148 +159,19 @@ SUBROUTINE LOOP_FIRE (R,INDX,AMAX)
 
         icase = 0
 
-        IF ( r% link(ip) /= 0 ) THEN
-           IF ( iloop == 0 .or. k /= ke ) THEN
-
-              l = r% link(ip)
-              mh = r% nhlx(l)
-              ms = r% nsgl(l)
-
-              icase = 1
-
-              IF ( mh == 1 .and. ms == 3 ) icase = 0
-              IF ( mh == 2 .and. ms == 1 ) icase = 4
-
-           ENDIF
+        CALL DEFECT_PULL(r, amax, atot, dg, i, icase, iloop, indx, ip, is, j, jndx, jp, js, &
+             k, ke, kndx, kp, l, mh, ms, n, nh, nl, ns, nsum, early_ret)
+        IF (early_ret) THEN
+           RETURN
         ENDIF
-
-        IF ( icase > 0 ) THEN
-
-           !=== Pull 5' End ===!
-
-           kp = ip + 1
-
-           IF ( r% ibsp(kp) == 0 ) THEN
-
-              is = r% iseq(kp)
-              js = r% iseq(jp)
-
-              IF ( iwc(is,js) == 1 ) THEN
-
-                 CALL DELTAG_HD (r,ip,jp,kp,dg)
-
-                 dg = dg / 2.0d0
-
-                 x = beta * dg
-                 x = DEXP(-x) * rated
-
-                 atot = atot + x
-
-                 IF ( atot >= amax ) THEN
-                    CALL ADJUST_BP(r, amax, atot, dg, i, icase, iloop, indx, ip, is, j, jndx, jp, js, &
-                         k, ke, kndx, kp, l, mh, ms, n, nh, nl, ns, nsum)
-                    RETURN
-                 ENDIF
-
-              ENDIF
-
-           ENDIF
-
-           !=== Pull 3' End ===!
-
-           kp = jp - 1
-
-           IF ( r% ibsp(kp) == 0 ) THEN
-
-              is = r% iseq(ip)
-              js = r% iseq(kp)
-
-              IF ( iwc(is,js) == 1 ) THEN
-
-                 CALL DELTAG_HD (r,ip,jp,kp,dg)
-
-                 dg = dg / 2.0d0
-
-                 x = beta * dg
-                 x = DEXP(-x) * rated
-
-                 atot = atot + x
-
-                 IF ( atot >= amax ) THEN
-                    CALL ADJUST_BP(r, amax, atot, dg, i, icase, iloop, indx, ip, is, j, jndx, jp, js, &
-                         k, ke, kndx, kp, l, mh, ms, n, nh, nl, ns, nsum)
-                    RETURN
-                 ENDIF
-
-              ENDIF
-
-           ENDIF
-
-        ENDIF
-
 
         !=== Open BP Inside Helix ===!
 
-        IF ( r% link(ip) == 0 ) THEN
-           IF ( iloop == 1 .and. k == ke ) THEN
-
-              is = ip + 1
-              js = jp - 1
-
-              DO WHILE ( r% link(is) == 0 )
-
-                 atot = atot + r% wrk1(is)
-
-                 is = is + 1
-                 js = js - 1
-
-                 IF ( atot >= amax ) THEN
-
-                    nl = nl + 1
-
-                    r% ibsp(is-1) = 0
-                    r% ibsp(js+1) = 0
-                    r% nl = nl
-
-                    r% loop(nl) = js
-                    r% link(js) = nl
-                    r% link(is-2) = nl
-
-                    r% nhlx(nl) = 2
-                    r% nsgl(nl) = 2
-
-                    IF ( nl > nsum ) THEN
-                       r% nsum = 2 * nsum
-                    ENDIF
-
-                    !=== Recalc Upper Loop? ===!
-
-                    jndx = r% link(js+2)
-
-                    IF ( jndx == 0 ) CALL HELX_REAC (r,js+2)
-                    IF ( jndx /= 0 ) CALL LOOP_REAC (r,jndx)
-
-                    !=== Calculate New Loop ===!
-
-                    jndx = r% link(js)
-
-                    CALL LOOP_REAC (r,jndx)
-
-                    !=== Recalc Lower Loop? ===!
-
-                    kndx = r% link(is)
-
-                    IF ( kndx /= 0 ) CALL LOOP_REAC (r,kndx)
-
-                    RETURN
-
-                 ENDIF
-
-              ENDDO
-
-           ENDIF
+        CALL OPEN_BP(r, amax, atot, dg, i, icase, iloop, indx, ip, is, j, jndx, jp, js, &
+             k, ke, kndx, kp, l, mh, ms, n, nh, nl, ns, nsum, early_ret)
+        IF (early_ret) THEN
+           RETURN
         ENDIF
-
 
         IF ( k /= ke ) THEN
            k = r% ibsp(k)
@@ -1408,3 +1279,204 @@ SUBROUTINE DEFECT_PUSH(r, amax, atot, dg, i, icase, iloop, indx, ip, is, j, jndx
 
 END SUBROUTINE DEFECT_PUSH
       
+SUBROUTINE DEFECT_PULL(r, amax, atot, dg, i, icase, iloop, indx, ip, is, j, jndx, jp, js, &
+     k, ke, kndx, kp, l, mh, ms, n, nh, nl, ns, nsum, early_ret)
+
+  IMPLICIT NONE
+
+  TYPE(RNA_STRUC), INTENT(INOUT) :: r
+  DOUBLE PRECISION, INTENT(IN) :: amax
+  DOUBLE PRECISION, INTENT(INOUT) :: atot
+  DOUBLE PRECISION, INTENT(OUT) :: dg
+  
+  INTEGER, INTENT(IN) :: i, iloop, indx, ip
+  INTEGER, INTENT(INOUT) :: icase, is
+  INTEGER, INTENT(IN) :: j, jp
+  INTEGER, INTENT(INOUT) :: jndx, js
+  INTEGER, INTENT(IN) :: k, ke
+  INTEGER, INTENT(INOUT) :: kndx, kp
+  INTEGER, INTENT(INOUT) :: l
+  INTEGER, INTENT(INOUT) :: mh, ms
+  INTEGER, INTENT(IN) :: n, nh
+  INTEGER, INTENT(INOUT) :: nl, nsum, ns
+
+  LOGICAL, INTENT(OUT) :: early_ret
+
+  DOUBLE PRECISION :: x
+
+  early_ret = .FALSE.
+
+  IF ( r% link(ip) /= 0 ) THEN
+     IF ( iloop == 0 .or. k /= ke ) THEN
+
+        l = r% link(ip)
+        mh = r% nhlx(l)
+        ms = r% nsgl(l)
+
+        icase = 1
+
+        IF ( mh == 1 .and. ms == 3 ) icase = 0
+        IF ( mh == 2 .and. ms == 1 ) icase = 4
+
+     ENDIF
+  ENDIF
+
+  IF ( icase > 0 ) THEN
+
+     !=== Pull 5' End ===!
+
+     kp = ip + 1
+
+     IF ( r% ibsp(kp) == 0 ) THEN
+
+        is = r% iseq(kp)
+        js = r% iseq(jp)
+
+        IF ( iwc(is,js) == 1 ) THEN
+
+           CALL DELTAG_HD (r,ip,jp,kp,dg)
+
+           dg = dg / 2.0d0
+
+           x = beta * dg
+           x = DEXP(-x) * rated
+
+           atot = atot + x
+
+           IF ( atot >= amax ) THEN
+              CALL ADJUST_BP(r, amax, atot, dg, i, icase, iloop, indx, ip, is, j, jndx, jp, js, &
+                   k, ke, kndx, kp, l, mh, ms, n, nh, nl, ns, nsum)
+
+              early_ret = .TRUE.
+              RETURN
+           ENDIF
+
+        ENDIF
+
+     ENDIF
+
+     !=== Pull 3' End ===!
+
+     kp = jp - 1
+
+     IF ( r% ibsp(kp) == 0 ) THEN
+
+        is = r% iseq(ip)
+        js = r% iseq(kp)
+
+        IF ( iwc(is,js) == 1 ) THEN
+
+           CALL DELTAG_HD (r,ip,jp,kp,dg)
+
+           dg = dg / 2.0d0
+
+           x = beta * dg
+           x = DEXP(-x) * rated
+
+           atot = atot + x
+
+           IF ( atot >= amax ) THEN
+              CALL ADJUST_BP(r, amax, atot, dg, i, icase, iloop, indx, ip, is, j, jndx, jp, js, &
+                   k, ke, kndx, kp, l, mh, ms, n, nh, nl, ns, nsum)
+
+              early_ret = .TRUE.
+              RETURN
+           ENDIF
+
+        ENDIF
+
+     ENDIF
+
+  ENDIF
+
+END SUBROUTINE DEFECT_PULL
+
+SUBROUTINE OPEN_BP(r, amax, atot, dg, i, icase, iloop, indx, ip, is, j, jndx, jp, js, &
+     k, ke, kndx, kp, l, mh, ms, n, nh, nl, ns, nsum, early_ret)
+
+  IMPLICIT NONE
+
+  TYPE(RNA_STRUC), INTENT(INOUT) :: r
+  DOUBLE PRECISION, INTENT(IN) :: amax
+  DOUBLE PRECISION, INTENT(INOUT) :: atot
+  DOUBLE PRECISION, INTENT(OUT) :: dg
+
+  INTEGER, INTENT(IN) :: i, iloop, indx, ip
+  INTEGER, INTENT(INOUT) :: icase, is
+  INTEGER, INTENT(IN) :: j, jp
+  INTEGER, INTENT(INOUT) :: jndx, js
+  INTEGER, INTENT(IN) :: k, ke
+  INTEGER, INTENT(INOUT) :: kndx, kp
+  INTEGER, INTENT(INOUT) :: l
+  INTEGER, INTENT(INOUT) :: mh, ms
+  INTEGER, INTENT(IN) :: n, nh
+  INTEGER, INTENT(INOUT) :: nl, nsum, ns
+
+  LOGICAL, INTENT(OUT) :: early_ret
+
+  DOUBLE PRECISION :: x
+
+  early_ret = .FALSE.
+  
+  IF ( r% link(ip) == 0 ) THEN
+     IF ( iloop == 1 .and. k == ke ) THEN
+
+        is = ip + 1
+        js = jp - 1
+
+        DO WHILE ( r% link(is) == 0 )
+
+           atot = atot + r% wrk1(is)
+
+           is = is + 1
+           js = js - 1
+
+           IF ( atot >= amax ) THEN
+
+              nl = nl + 1
+
+              r% ibsp(is-1) = 0
+              r% ibsp(js+1) = 0
+              r% nl = nl
+
+              r% loop(nl) = js
+              r% link(js) = nl
+              r% link(is-2) = nl
+
+              r% nhlx(nl) = 2
+              r% nsgl(nl) = 2
+
+              IF ( nl > nsum ) THEN
+                 r% nsum = 2 * nsum
+              ENDIF
+
+              !=== Recalc Upper Loop? ===!
+
+              jndx = r% link(js+2)
+
+              IF ( jndx == 0 ) CALL HELX_REAC (r,js+2)
+              IF ( jndx /= 0 ) CALL LOOP_REAC (r,jndx)
+
+              !=== Calculate New Loop ===!
+
+              jndx = r% link(js)
+
+              CALL LOOP_REAC (r,jndx)
+
+              !=== Recalc Lower Loop? ===!
+
+              kndx = r% link(is)
+
+              IF ( kndx /= 0 ) CALL LOOP_REAC (r,kndx)
+
+              early_ret = .TRUE.
+              RETURN
+
+           ENDIF
+
+        ENDDO
+
+     ENDIF
+  ENDIF
+
+END SUBROUTINE OPEN_BP
