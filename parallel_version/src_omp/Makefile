@@ -50,7 +50,7 @@ veryclean:
 	rm -f *.o *.mod *.x
 
 profile: kfold
-	$(NSYS) $(NSYSFLAGS) -o omp-report ./Kfold.x -i ../../examples/rbs/rbs_0000.start -o ../../outputs/rbs_0000.traj -l ../../outputs/rbs_0000.log -s 1234 -n 180 -t 10000
+	$(NSYS) $(NSYSFLAGS) -o ../../profiles/omp-report ./Kfold.x -i ../../examples/rbs/rbs_0000.start -o ../../outputs/rbs_0000.traj -l ../../outputs/rbs_0000.log -s 1234 -n 180 -t 10000
 
 	
 
