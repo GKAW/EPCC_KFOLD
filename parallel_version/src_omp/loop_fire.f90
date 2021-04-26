@@ -48,8 +48,8 @@ SUBROUTINE LOOP_FIRE (R,INDX,AMAX)
   !=== VARIABLES ===!
 
   INTEGER :: i,j,k,n,nl,ip,jp,kp,is,js
-  INTEGER :: ks,ke,l,lmx,icnt,iloop
-  INTEGER :: nt,nh,ns,mt,mh,ms,icase
+  INTEGER :: ks,ke,l,icnt,iloop
+  INTEGER :: nt,nh,ns,mh,ms
   INTEGER :: jndx,kndx,nsum
 
   DOUBLE PRECISION :: x,dg,atot
@@ -113,62 +113,51 @@ SUBROUTINE LOOP_FIRE (R,INDX,AMAX)
         ip = k
         jp = r% ibsp(k)
 
-        icase = 0
-
         !=== Helix Extension ===!
 
-        CALL HELIX_EXTEND(r, amax, atot, i, icase, iloop, indx, ip, is, j, jndx, jp, js, &
+        CALL HELIX_EXTEND(r, amax, atot, i, iloop, indx, ip, is, j, jndx, jp, js, &
              k, ke, kndx, kp, l, n, nh, nl, ns, nsum, early_ret)
         IF (early_ret) THEN
            RETURN
         ENDIF
 
         !=== Helix Retraction ===!
-
-        icase = 0
         
-        CALL HELIX_RETRACT(r, amax, atot, i, icase, iloop, indx, ip, j, jndx, jp, js, &
+        CALL HELIX_RETRACT(r, amax, atot, iloop, indx, ip, j, jndx, jp, &
              k, ke, kndx, kp, l, mh, ms, n, nh, nl, ns, nsum, early_ret)
         IF (early_ret) THEN
            RETURN
         ENDIF
 
-        icase = 0
-
         !=== Helix Morphing ===!
-        CALL HELIX_MORPH(r, amax, atot, dg, i, icase, iloop, indx, ip, is, j, jndx, jp, js, &
-             k, ke, kndx, kp, l, mh, ms, n, nh, nl, ns, nsum, x, early_ret)
+        CALL HELIX_MORPH(r, amax, atot, dg, i, iloop, indx, ip, is, j, jndx, jp, js, &
+             k, ke, kndx, n, nh, ns, x, early_ret)
         IF (early_ret) THEN
            RETURN
         ENDIF
-
 
         !=== Defect Diffusion ===!
 
         !=== PUSH ===!
 
-        icase = 0
-
-        CALL DEFECT_PUSH(r, amax, atot, dg, i, icase, iloop, indx, ip, is, j, jndx, jp, js, &
-             k, ke, kndx, kp, l, mh, ms, n, nh, nl, ns, nsum, early_ret)
+        CALL DEFECT_PUSH(r, amax, atot, dg, i, iloop, indx, ip, is, j, jndx, jp, js, &
+             k, ke, kndx, kp, l, n, nh, nl, ns, nsum, early_ret)
         IF (early_ret) THEN
            RETURN
         ENDIF
 
         !=== PULL === !
 
-        icase = 0
-
-        CALL DEFECT_PULL(r, amax, atot, dg, i, icase, iloop, indx, ip, is, j, jndx, jp, js, &
-             k, ke, kndx, kp, l, mh, ms, n, nh, nl, ns, nsum, early_ret)
+        CALL DEFECT_PULL(r, amax, atot, dg, i, iloop, indx, ip, is, j, jndx, jp, js, &
+             k, ke, kndx, kp, l, mh, ms, nl, ns, nsum, early_ret)
         IF (early_ret) THEN
            RETURN
         ENDIF
 
         !=== Open BP Inside Helix ===!
 
-        CALL OPEN_BP(r, amax, atot, dg, i, icase, iloop, indx, ip, is, j, jndx, jp, js, &
-             k, ke, kndx, kp, l, mh, ms, n, nh, nl, ns, nsum, early_ret)
+        CALL OPEN_BP(r, amax, atot, iloop, ip, is, jndx, jp, js, &
+             k, ke, kndx, nl, nsum, early_ret)
         IF (early_ret) THEN
            RETURN
         ENDIF
@@ -337,7 +326,7 @@ SUBROUTINE NUCLEATION(r, amax, atot, icnt, iloop, indx, ip, is, jndx, j, jp, js,
 
 END SUBROUTINE NUCLEATION
 
-SUBROUTINE HELIX_EXTEND(r, amax, atot, i, icase, iloop, indx, ip, is, j, jndx, jp, js, &
+SUBROUTINE HELIX_EXTEND(r, amax, atot, i, iloop, indx, ip, is, j, jndx, jp, js, &
      k, ke, kndx, kp, l, n, nh, nl, ns, nsum, early_ret)
 
   IMPLICIT NONE
@@ -347,7 +336,6 @@ SUBROUTINE HELIX_EXTEND(r, amax, atot, i, icase, iloop, indx, ip, is, j, jndx, j
   DOUBLE PRECISION, INTENT(INOUT) :: atot
 
   INTEGER, INTENT(IN) :: i, iloop, indx, ip
-  INTEGER, INTENT(INOUT) :: icase
   INTEGER, INTENT(OUT) :: is
   INTEGER, INTENT(IN) :: j, jp
   INTEGER, INTENT(INOUT) :: jndx, js
@@ -359,6 +347,9 @@ SUBROUTINE HELIX_EXTEND(r, amax, atot, i, icase, iloop, indx, ip, is, j, jndx, j
 
   LOGICAL, INTENT(OUT) :: early_ret
 
+  INTEGER :: icase
+
+  icase = 0
   early_ret = .FALSE.
   
   IF ( ip > 1 .and. jp < n ) THEN
@@ -507,7 +498,7 @@ SUBROUTINE HELIX_EXTEND(r, amax, atot, i, icase, iloop, indx, ip, is, j, jndx, j
   
 END SUBROUTINE HELIX_EXTEND
 
-SUBROUTINE HELIX_RETRACT(r, amax, atot, i, icase, iloop, indx, ip, j, jndx, jp, js, &
+SUBROUTINE HELIX_RETRACT(r, amax, atot, iloop, indx, ip, j, jndx, jp, &
      k, ke, kndx, kp, l, mh, ms, n, nh, nl, ns, nsum, early_ret)
 
   IMPLICIT NONE
@@ -516,10 +507,9 @@ SUBROUTINE HELIX_RETRACT(r, amax, atot, i, icase, iloop, indx, ip, j, jndx, jp, 
   DOUBLE PRECISION, INTENT(IN) :: amax
   DOUBLE PRECISION, INTENT(INOUT) :: atot
 
-  INTEGER, INTENT(IN) :: i, iloop, indx, ip
-  INTEGER, INTENT(INOUT) :: icase
+  INTEGER, INTENT(IN) :: iloop, indx, ip
   INTEGER, INTENT(IN) :: j, jp
-  INTEGER, INTENT(INOUT) :: jndx, js
+  INTEGER, INTENT(INOUT) :: jndx
   INTEGER, INTENT(IN) :: k, ke
   INTEGER, INTENT(INOUT) :: kndx, kp
   INTEGER, INTENT(INOUT) :: l
@@ -528,8 +518,10 @@ SUBROUTINE HELIX_RETRACT(r, amax, atot, i, icase, iloop, indx, ip, j, jndx, jp, 
   INTEGER, INTENT(INOUT) :: nsum
 
   LOGICAL, INTENT(OUT) :: early_ret
-
+  INTEGER :: icase
+  
   early_ret = .FALSE.
+  icase = 0
   
   IF ( ip /= n .and. jp /= 1 ) THEN
 
@@ -708,8 +700,8 @@ SUBROUTINE HELIX_RETRACT(r, amax, atot, i, icase, iloop, indx, ip, j, jndx, jp, 
 
 END SUBROUTINE HELIX_RETRACT
 
-SUBROUTINE HELIX_MORPH(r, amax, atot, dg, i, icase, iloop, indx, ip, is, j, jndx, jp, js, &
-     k, ke, kndx, kp, l, mh, ms, n, nh, nl, ns, nsum, x, early_ret)
+SUBROUTINE HELIX_MORPH(r, amax, atot, dg, i, iloop, indx, ip, is, j, jndx, jp, js, &
+     k, ke, kndx, n, nh, ns, x, early_ret)
 
   IMPLICIT NONE
 
@@ -719,19 +711,21 @@ SUBROUTINE HELIX_MORPH(r, amax, atot, dg, i, icase, iloop, indx, ip, is, j, jndx
   DOUBLE PRECISION, INTENT(OUT) :: dg
   
   INTEGER, INTENT(IN) :: i, iloop, indx, ip
-  INTEGER, INTENT(INOUT) :: icase, is
+  INTEGER, INTENT(INOUT) :: is
   INTEGER, INTENT(IN) :: j, jp
   INTEGER, INTENT(INOUT) :: jndx, js
   INTEGER, INTENT(IN) :: k, ke
-  INTEGER, INTENT(INOUT) :: kndx, kp
-  INTEGER, INTENT(INOUT) :: l
-  INTEGER, INTENT(INOUT) :: mh, ms
-  INTEGER, INTENT(IN) :: n, nh, nl
-  INTEGER, INTENT(INOUT) :: nsum, ns
+  INTEGER, INTENT(INOUT) :: kndx
+  INTEGER, INTENT(IN) :: n, nh
+  INTEGER, INTENT(INOUT) :: ns
   DOUBLE PRECISION, INTENT(OUT) :: x
 
   LOGICAL, INTENT(OUT) :: early_ret
+  INTEGER :: icase
 
+  early_ret = .FALSE.
+  icase = 0
+  
   IF ( iloop == 0 .or. nh > 2 ) THEN
      IF ( ip > 1 .and. jp < n ) THEN
 
@@ -853,25 +847,22 @@ SUBROUTINE HELIX_MORPH(r, amax, atot, dg, i, icase, iloop, indx, ip, is, j, jndx
 
 END SUBROUTINE HELIX_MORPH
 
-SUBROUTINE ADJUST_BP(r, amax, atot, dg, i, icase, iloop, indx, ip, is, j, jndx, jp, js, &
-     k, ke, kndx, kp, l, mh, ms, n, nh, nl, ns, nsum)
+SUBROUTINE ADJUST_BP(r, amax, atot, i, icase, iloop, indx, ip, is, j, jndx, jp, &
+     k, ke, kndx, kp, l, nl, ns, nsum)
 
   IMPLICIT NONE
 
   TYPE(RNA_STRUC), INTENT(INOUT) :: r
   DOUBLE PRECISION, INTENT(IN) :: amax
   DOUBLE PRECISION, INTENT(INOUT) :: atot
-  DOUBLE PRECISION, INTENT(OUT) :: dg
   
   INTEGER, INTENT(IN) :: i, iloop, indx, ip
   INTEGER, INTENT(INOUT) :: icase, is
   INTEGER, INTENT(IN) :: j, jp
-  INTEGER, INTENT(INOUT) :: jndx, js
+  INTEGER, INTENT(INOUT) :: jndx
   INTEGER, INTENT(IN) :: k, ke
   INTEGER, INTENT(INOUT) :: kndx, kp
   INTEGER, INTENT(INOUT) :: l
-  INTEGER, INTENT(INOUT) :: mh, ms
-  INTEGER, INTENT(IN) :: n, nh
   INTEGER, INTENT(INOUT) :: nl, nsum, ns
   
   IF ( atot >= amax ) THEN
@@ -1159,8 +1150,8 @@ SUBROUTINE ADJUST_BP(r, amax, atot, dg, i, icase, iloop, indx, ip, is, j, jndx, 
 
 END SUBROUTINE ADJUST_BP
 
-SUBROUTINE DEFECT_PUSH(r, amax, atot, dg, i, icase, iloop, indx, ip, is, j, jndx, jp, js, &
-     k, ke, kndx, kp, l, mh, ms, n, nh, nl, ns, nsum, early_ret)
+SUBROUTINE DEFECT_PUSH(r, amax, atot, dg, i, iloop, indx, ip, is, j, jndx, jp, js, &
+     k, ke, kndx, kp, l, n, nh, nl, ns, nsum, early_ret)
 
   IMPLICIT NONE
 
@@ -1170,20 +1161,21 @@ SUBROUTINE DEFECT_PUSH(r, amax, atot, dg, i, icase, iloop, indx, ip, is, j, jndx
   DOUBLE PRECISION, INTENT(OUT) :: dg
   
   INTEGER, INTENT(IN) :: i, iloop, indx, ip
-  INTEGER, INTENT(INOUT) :: icase, is
+  INTEGER, INTENT(INOUT) :: is
   INTEGER, INTENT(IN) :: j, jp
   INTEGER, INTENT(INOUT) :: jndx, js
   INTEGER, INTENT(IN) :: k, ke
   INTEGER, INTENT(INOUT) :: kndx, kp
   INTEGER, INTENT(INOUT) :: l
-  INTEGER, INTENT(INOUT) :: mh, ms
   INTEGER, INTENT(IN) :: n, nh
   INTEGER, INTENT(INOUT) :: nl, nsum, ns
 
   LOGICAL, INTENT(OUT) :: early_ret
 
   DOUBLE PRECISION :: x
+  INTEGER :: icase
 
+  icase = 0
   early_ret = .FALSE.
   
   IF ( r% link(ip) == 0 ) THEN
@@ -1229,8 +1221,8 @@ SUBROUTINE DEFECT_PUSH(r, amax, atot, dg, i, icase, iloop, indx, ip, is, j, jndx
               atot = atot + x
 
               IF ( atot >= amax ) THEN
-                 CALL ADJUST_BP(r, amax, atot, dg, i, icase, iloop, indx, ip, is, j, jndx, jp, js, &
-                      k, ke, kndx, kp, l, mh, ms, n, nh, nl, ns, nsum)
+                 CALL ADJUST_BP(r, amax, atot, i, icase, iloop, indx, ip, is, j, jndx, jp, &
+                      k, ke, kndx, kp, l, nl, ns, nsum)
 
                  early_ret = .TRUE.
                  RETURN
@@ -1263,8 +1255,8 @@ SUBROUTINE DEFECT_PUSH(r, amax, atot, dg, i, icase, iloop, indx, ip, is, j, jndx
               atot = atot + x
 
               IF ( atot >= amax ) THEN
-                 CALL ADJUST_BP(r, amax, atot, dg, i, icase, iloop, indx, ip, is, j, jndx, jp, js, &
-                      k, ke, kndx, kp, l, mh, ms, n, nh, nl, ns, nsum)
+                 CALL ADJUST_BP(r, amax, atot, i, icase, iloop, indx, ip, is, j, jndx, jp, &
+                      k, ke, kndx, kp, l, nl, ns, nsum)
                  
                  early_ret = .TRUE.
                  RETURN
@@ -1279,8 +1271,8 @@ SUBROUTINE DEFECT_PUSH(r, amax, atot, dg, i, icase, iloop, indx, ip, is, j, jndx
 
 END SUBROUTINE DEFECT_PUSH
       
-SUBROUTINE DEFECT_PULL(r, amax, atot, dg, i, icase, iloop, indx, ip, is, j, jndx, jp, js, &
-     k, ke, kndx, kp, l, mh, ms, n, nh, nl, ns, nsum, early_ret)
+SUBROUTINE DEFECT_PULL(r, amax, atot, dg, i, iloop, indx, ip, is, j, jndx, jp, js, &
+     k, ke, kndx, kp, l, mh, ms, nl, ns, nsum, early_ret)
 
   IMPLICIT NONE
 
@@ -1290,20 +1282,21 @@ SUBROUTINE DEFECT_PULL(r, amax, atot, dg, i, icase, iloop, indx, ip, is, j, jndx
   DOUBLE PRECISION, INTENT(OUT) :: dg
   
   INTEGER, INTENT(IN) :: i, iloop, indx, ip
-  INTEGER, INTENT(INOUT) :: icase, is
+  INTEGER, INTENT(INOUT) :: is
   INTEGER, INTENT(IN) :: j, jp
   INTEGER, INTENT(INOUT) :: jndx, js
   INTEGER, INTENT(IN) :: k, ke
   INTEGER, INTENT(INOUT) :: kndx, kp
   INTEGER, INTENT(INOUT) :: l
   INTEGER, INTENT(INOUT) :: mh, ms
-  INTEGER, INTENT(IN) :: n, nh
   INTEGER, INTENT(INOUT) :: nl, nsum, ns
 
   LOGICAL, INTENT(OUT) :: early_ret
 
+  INTEGER :: icase
   DOUBLE PRECISION :: x
 
+  icase = 0
   early_ret = .FALSE.
 
   IF ( r% link(ip) /= 0 ) THEN
@@ -1344,8 +1337,8 @@ SUBROUTINE DEFECT_PULL(r, amax, atot, dg, i, icase, iloop, indx, ip, is, j, jndx
            atot = atot + x
 
            IF ( atot >= amax ) THEN
-              CALL ADJUST_BP(r, amax, atot, dg, i, icase, iloop, indx, ip, is, j, jndx, jp, js, &
-                   k, ke, kndx, kp, l, mh, ms, n, nh, nl, ns, nsum)
+              CALL ADJUST_BP(r, amax, atot, i, icase, iloop, indx, ip, is, j, jndx, jp, &
+                   k, ke, kndx, kp, l, nl, ns, nsum)
 
               early_ret = .TRUE.
               RETURN
@@ -1376,8 +1369,8 @@ SUBROUTINE DEFECT_PULL(r, amax, atot, dg, i, icase, iloop, indx, ip, is, j, jndx
            atot = atot + x
 
            IF ( atot >= amax ) THEN
-              CALL ADJUST_BP(r, amax, atot, dg, i, icase, iloop, indx, ip, is, j, jndx, jp, js, &
-                   k, ke, kndx, kp, l, mh, ms, n, nh, nl, ns, nsum)
+              CALL ADJUST_BP(r, amax, atot, i, icase, iloop, indx, ip, is, j, jndx, jp, &
+                   k, ke, kndx, kp, l, nl, ns, nsum)
 
               early_ret = .TRUE.
               RETURN
@@ -1391,30 +1384,24 @@ SUBROUTINE DEFECT_PULL(r, amax, atot, dg, i, icase, iloop, indx, ip, is, j, jndx
 
 END SUBROUTINE DEFECT_PULL
 
-SUBROUTINE OPEN_BP(r, amax, atot, dg, i, icase, iloop, indx, ip, is, j, jndx, jp, js, &
-     k, ke, kndx, kp, l, mh, ms, n, nh, nl, ns, nsum, early_ret)
+SUBROUTINE OPEN_BP(r, amax, atot, iloop, ip, is, jndx, jp, js, &
+     k, ke, kndx, nl, nsum, early_ret)
 
   IMPLICIT NONE
 
   TYPE(RNA_STRUC), INTENT(INOUT) :: r
   DOUBLE PRECISION, INTENT(IN) :: amax
   DOUBLE PRECISION, INTENT(INOUT) :: atot
-  DOUBLE PRECISION, INTENT(OUT) :: dg
 
-  INTEGER, INTENT(IN) :: i, iloop, indx, ip
-  INTEGER, INTENT(INOUT) :: icase, is
-  INTEGER, INTENT(IN) :: j, jp
+  INTEGER, INTENT(IN) :: iloop, ip
+  INTEGER, INTENT(INOUT) :: is
+  INTEGER, INTENT(IN) :: jp
   INTEGER, INTENT(INOUT) :: jndx, js
   INTEGER, INTENT(IN) :: k, ke
-  INTEGER, INTENT(INOUT) :: kndx, kp
-  INTEGER, INTENT(INOUT) :: l
-  INTEGER, INTENT(INOUT) :: mh, ms
-  INTEGER, INTENT(IN) :: n, nh
-  INTEGER, INTENT(INOUT) :: nl, nsum, ns
+  INTEGER, INTENT(INOUT) :: kndx
+  INTEGER, INTENT(INOUT) :: nl, nsum
 
   LOGICAL, INTENT(OUT) :: early_ret
-
-  DOUBLE PRECISION :: x
 
   early_ret = .FALSE.
   
