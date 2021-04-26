@@ -149,91 +149,10 @@ SUBROUTINE LOOP_FIRE (R,INDX,AMAX)
 
         icase = 0
 
-        IF ( r% link(ip) == 0 ) THEN
-
-           icase = 2
-
-           IF ( iloop == 1 ) THEN
-              IF ( nh == 2 .and. ns == 1 ) icase = 3
-              IF ( nh == 1 .and. ns == 3 ) icase = 0
-           ENDIF
-
-        ELSEIF ( iloop == 0 .or. k /= ke ) THEN
-
-           icase = 1
-
-           IF ( iloop == 1 ) THEN
-              IF ( nh == 2 .and. ns == 1 ) icase = 4
-           ENDIF
-
-        ENDIF
-
-        IF ( icase > 0 ) THEN
-
-           !=== Push 5' End ===!
-
-           kp = ip - 1
-
-           IF ( kp >= 1 ) THEN
-              IF ( r% ibsp(kp) == 0 ) THEN
-
-                 is = r% iseq(kp)
-                 js = r% iseq(jp)
-
-                 IF ( iwc(is,js) == 1 ) THEN
-
-                    CALL DELTAG_HD (r,ip,jp,kp,dg)
-
-                    dg = dg / 2.0d0
-
-                    x = beta * dg
-                    x = DEXP(-x) * rated
-
-                    atot = atot + x
-
-                    IF ( atot >= amax ) THEN
-                       CALL ADJUST_BP(r, amax, atot, dg, i, icase, iloop, indx, ip, is, j, jndx, jp, js, &
-                            k, ke, kndx, kp, l, mh, ms, n, nh, nl, ns, nsum)
-                       RETURN
-                    ENDIF
-
-                 ENDIF
-
-              ENDIF
-           ENDIF
-
-           !=== Push 3' End ===!
-
-           kp = jp + 1
-
-           IF ( kp <= n ) THEN
-              IF ( r% ibsp(kp) == 0 ) THEN
-
-                 is = r% iseq(ip)
-                 js = r% iseq(kp)
-
-                 IF ( iwc(is,js) == 1 ) THEN
-
-                    CALL DELTAG_HD (r,ip,jp,kp,dg)
-
-                    dg = dg / 2.0d0
-
-                    x = beta * dg
-                    x = DEXP(-x) * rated
-
-                    atot = atot + x
-
-                    IF ( atot >= amax ) THEN
-                       CALL ADJUST_BP(r, amax, atot, dg, i, icase, iloop, indx, ip, is, j, jndx, jp, js, &
-                            k, ke, kndx, kp, l, mh, ms, n, nh, nl, ns, nsum)
-                       RETURN
-                    ENDIF
-
-                 ENDIF
-
-              ENDIF
-           ENDIF
-
+        CALL DEFECT_PUSH(r, amax, atot, dg, i, icase, iloop, indx, ip, is, j, jndx, jp, js, &
+             k, ke, kndx, kp, l, mh, ms, n, nh, nl, ns, nsum, early_ret)
+        IF (early_ret) THEN
+           RETURN
         ENDIF
 
         !=== PULL === !
@@ -1368,3 +1287,124 @@ SUBROUTINE ADJUST_BP(r, amax, atot, dg, i, icase, iloop, indx, ip, is, j, jndx, 
   ENDIF
 
 END SUBROUTINE ADJUST_BP
+
+SUBROUTINE DEFECT_PUSH(r, amax, atot, dg, i, icase, iloop, indx, ip, is, j, jndx, jp, js, &
+     k, ke, kndx, kp, l, mh, ms, n, nh, nl, ns, nsum, early_ret)
+
+  IMPLICIT NONE
+
+  TYPE(RNA_STRUC), INTENT(INOUT) :: r
+  DOUBLE PRECISION, INTENT(IN) :: amax
+  DOUBLE PRECISION, INTENT(INOUT) :: atot
+  DOUBLE PRECISION, INTENT(OUT) :: dg
+  
+  INTEGER, INTENT(IN) :: i, iloop, indx, ip
+  INTEGER, INTENT(INOUT) :: icase, is
+  INTEGER, INTENT(IN) :: j, jp
+  INTEGER, INTENT(INOUT) :: jndx, js
+  INTEGER, INTENT(IN) :: k, ke
+  INTEGER, INTENT(INOUT) :: kndx, kp
+  INTEGER, INTENT(INOUT) :: l
+  INTEGER, INTENT(INOUT) :: mh, ms
+  INTEGER, INTENT(IN) :: n, nh
+  INTEGER, INTENT(INOUT) :: nl, nsum, ns
+
+  LOGICAL, INTENT(OUT) :: early_ret
+
+  DOUBLE PRECISION :: x
+
+  early_ret = .FALSE.
+  
+  IF ( r% link(ip) == 0 ) THEN
+
+     icase = 2
+
+     IF ( iloop == 1 ) THEN
+        IF ( nh == 2 .and. ns == 1 ) icase = 3
+        IF ( nh == 1 .and. ns == 3 ) icase = 0
+     ENDIF
+
+  ELSEIF ( iloop == 0 .or. k /= ke ) THEN
+
+     icase = 1
+
+     IF ( iloop == 1 ) THEN
+        IF ( nh == 2 .and. ns == 1 ) icase = 4
+     ENDIF
+
+  ENDIF
+
+  IF ( icase > 0 ) THEN
+
+     !=== Push 5' End ===!
+
+     kp = ip - 1
+
+     IF ( kp >= 1 ) THEN
+        IF ( r% ibsp(kp) == 0 ) THEN
+
+           is = r% iseq(kp)
+           js = r% iseq(jp)
+
+           IF ( iwc(is,js) == 1 ) THEN
+
+              CALL DELTAG_HD (r,ip,jp,kp,dg)
+
+              dg = dg / 2.0d0
+
+              x = beta * dg
+              x = DEXP(-x) * rated
+
+              atot = atot + x
+
+              IF ( atot >= amax ) THEN
+                 CALL ADJUST_BP(r, amax, atot, dg, i, icase, iloop, indx, ip, is, j, jndx, jp, js, &
+                      k, ke, kndx, kp, l, mh, ms, n, nh, nl, ns, nsum)
+
+                 early_ret = .TRUE.
+                 RETURN
+              ENDIF
+
+           ENDIF
+
+        ENDIF
+     ENDIF
+
+     !=== Push 3' End ===!
+
+     kp = jp + 1
+
+     IF ( kp <= n ) THEN
+        IF ( r% ibsp(kp) == 0 ) THEN
+
+           is = r% iseq(ip)
+           js = r% iseq(kp)
+
+           IF ( iwc(is,js) == 1 ) THEN
+
+              CALL DELTAG_HD (r,ip,jp,kp,dg)
+
+              dg = dg / 2.0d0
+
+              x = beta * dg
+              x = DEXP(-x) * rated
+
+              atot = atot + x
+
+              IF ( atot >= amax ) THEN
+                 CALL ADJUST_BP(r, amax, atot, dg, i, icase, iloop, indx, ip, is, j, jndx, jp, js, &
+                      k, ke, kndx, kp, l, mh, ms, n, nh, nl, ns, nsum)
+                 
+                 early_ret = .TRUE.
+                 RETURN
+              ENDIF
+
+           ENDIF
+
+        ENDIF
+     ENDIF
+
+  ENDIF
+
+END SUBROUTINE DEFECT_PUSH
+      
