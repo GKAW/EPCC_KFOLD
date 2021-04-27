@@ -33,7 +33,7 @@
 ! ==============================================================================
 
       SUBROUTINE SSAREACTION (RNA,ISEED,TIME,TOUT)
-              !$acc routine seq
+
         USE RNAVar, ONLY : mxnt
 
         USE Class_RNAFold
@@ -68,19 +68,15 @@
 
         atot = rna% psum(n)
 
-        write(*,*) "SSAReaction Hello 0  n, atot rna%nsum:", n, atot, &
-                   rna%nsum
 
         !=== Compute Time Increment ===!
 
         r = RANDOM(iseed)
 
-        write(*,*) "SSAReaction Hello 1 time, tau, r:", time, tau, r, &
-                     atot
         tau = DLOG(1.0d0/r)
         tau = tau / atot
+
         time = time + tau
-        write(*,*) "SSAReaction Hello 2 time, tau, r:", time, tau, r
 
         !=== Output Current Structure? ===!
 

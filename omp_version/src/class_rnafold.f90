@@ -35,25 +35,25 @@
 
         TYPE, PUBLIC :: RNA_STRUC
 
-          CHARACTER :: seq(mxnt)
+          CHARACTER, DIMENSION(:), ALLOCATABLE  :: seq
 
-          INTEGER :: iseq(mxnt)
-          INTEGER :: ibsp(mxnt)
-          INTEGER :: link(mxnt)
+          INTEGER, DIMENSION(:), ALLOCATABLE  :: iseq
+          INTEGER, DIMENSION(:), ALLOCATABLE  :: ibsp
+          INTEGER, DIMENSION(:), ALLOCATABLE  :: link
 
-          INTEGER :: loop(mxnt)
-          INTEGER :: nhlx(mxnt)
-          INTEGER :: nsgl(mxnt)
+          INTEGER, DIMENSION(:), ALLOCATABLE  :: loop
+          INTEGER, DIMENSION(:), ALLOCATABLE  :: nhlx
+          INTEGER, DIMENSION(:), ALLOCATABLE  :: nsgl
 
           INTEGER :: n
           INTEGER :: nl
           INTEGER :: nsum
 
-          DOUBLE PRECISION :: psum(mxnt)
-          DOUBLE PRECISION :: ptot(mxnt)
+          DOUBLE PRECISION, DIMENSION(:), ALLOCATABLE :: psum
+          DOUBLE PRECISION, DIMENSION(:), ALLOCATABLE :: ptot
 
-          DOUBLE PRECISION :: wrk1(mxnt)
-          DOUBLE PRECISION :: wrk2(mxnt)
+          DOUBLE PRECISION, DIMENSION(:), ALLOCATABLE  :: wrk1
+          DOUBLE PRECISION, DIMENSION(:), ALLOCATABLE  :: wrk2
 
         END TYPE RNA_STRUC
 

@@ -191,8 +191,23 @@
         CALL CONVERT (seq,iseq,nn)
         CALL SETUPNUC (nn)
 
-        rna% seq(:) = seq(:)
-        rna% iseq(:) = iseq(:)
+        !=== Allocate arrays ===!
+
+        ALLOCATE(rna% seq(nn))
+        ALLOCATE(rna% iseq(nn))
+        ALLOCATE(rna% ibsp(nn))
+        ALLOCATE(rna% link(nn))
+        ALLOCATE(rna% loop(nn))
+        ALLOCATE(rna% nhlx(nn))
+        ALLOCATE(rna% nsgl(nn))
+        ALLOCATE(rna% psum(nn))
+        ALLOCATE(rna% ptot(nn))
+        ALLOCATE(rna% wrk1(nn))
+        ALLOCATE(rna% wrk2(nn))
+
+
+        rna% seq(1:nn) = seq(1:nn)
+        rna% iseq(1:nn) = iseq(1:nn)
         rna% n = nn
 
         write(*,*) "Hello -1: rna%nsum rna%n ", rna%nsum, rna%n
@@ -209,7 +224,7 @@
         DO isim=1,nsim
 
 
-        write(*,*) "Hello isim: rna%nsum rna%n ", rna%nsum, rna%n
+        !write(*,*) "Hello isim: rna%nsum rna%n ", rna%nsum, rna%n
           io = 1
           dt = 1.0d-2
 
@@ -217,7 +232,7 @@
           time = tstart
 
           IF ( istart ) THEN
-            rna% ibsp(:) = ibpi(:)
+            rna% ibsp(1:nn) = ibpi(1:nn)
           ELSE
             rna% ibsp(:) = 0
           ENDIF
@@ -228,10 +243,10 @@
 
           DO WHILE ( time < tmax )
 
-        write(*,*) "Hello 0: rna%nsum ", rna%nsum
-            write(*,*) "Hello 1:", time, tmax, iseed, tout
+        !write(*,*) "Hello 0: rna%nsum ", rna%nsum
+            !write(*,*) "Hello 1:", time, tmax, iseed, tout
             CALL SSAREACTION (rna,iseed,time,tout)
-            write(*,*) "Hello 2:", time, tmax, iseed, tout
+            !write(*,*) "Hello 2:", time, tmax, iseed, tout
 
             !=== Increment tout ===!
 
@@ -273,5 +288,18 @@
         CLOSE (UNIT=1)
         CLOSE (UNIT=2)
         CLOSE (UNIT=3)
+
+        !=== Deallocate memory ===!
+        DEALLOCATE(rna% wrk2)
+        DEALLOCATE(rna% wrk1)
+        DEALLOCATE(rna% ptot)
+        DEALLOCATE(rna% psum)
+        DEALLOCATE(rna% nsgl)
+        DEALLOCATE(rna% nhlx)
+        DEALLOCATE(rna% loop)
+        DEALLOCATE(rna% link)
+        DEALLOCATE(rna% ibsp)
+        DEALLOCATE(rna% iseq)
+        DEALLOCATE(rna% seq)
 
       END PROGRAM KFOLD
