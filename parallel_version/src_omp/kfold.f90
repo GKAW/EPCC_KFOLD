@@ -189,10 +189,23 @@
         CALL CONVERT (seq,iseq,nn)
         CALL SETUPNUC (nn)
 
-        rna% seq(:) = seq(:)
-        rna% iseq(:) = iseq(:)
-        rna% n = nn
+        !=== Allocate arrays ===!
 
+        ALLOCATE(rna% seq(nn))
+        ALLOCATE(rna% iseq(nn))
+        ALLOCATE(rna% ibsp(nn))
+        ALLOCATE(rna% link(nn))
+        ALLOCATE(rna% loop(nn))
+        ALLOCATE(rna% nhlx(nn))
+        ALLOCATE(rna% nsgl(nn))
+        ALLOCATE(rna% psum(nn))
+        ALLOCATE(rna% ptot(nn))
+        ALLOCATE(rna% wrk1(nn))
+        ALLOCATE(rna% wrk2(nn))
+
+        rna% seq(1:nn) = seq(1:nn)
+        rna% iseq(1:nn) = iseq(1:nn)
+        rna% n = nn
 
         !=== SECTION 2 - Perform RNA Kinetics ===! 
 
@@ -211,9 +224,9 @@
           time = tstart
 
           IF ( istart ) THEN
-            rna% ibsp(:) = ibpi(:)
+            rna% ibsp(1:nn) = ibpi(1:nn)
           ELSE
-            rna% ibsp(:) = 0
+            rna% ibsp(1:nn) = 0
           ENDIF
  
           CALL LOOP_INIT (rna)
@@ -264,5 +277,18 @@
         !$OMP END PARALLEL DO
 
         CLOSE (UNIT=1)
+
+        !=== Deallocate memory ===!
+        DEALLOCATE(rna% wrk2)
+        DEALLOCATE(rna% wrk1)
+        DEALLOCATE(rna% ptot)
+        DEALLOCATE(rna% psum)
+        DEALLOCATE(rna% nsgl)
+        DEALLOCATE(rna% nhlx)
+        DEALLOCATE(rna% loop)
+        DEALLOCATE(rna% link)
+        DEALLOCATE(rna% ibsp)
+        DEALLOCATE(rna% iseq)
+        DEALLOCATE(rna% seq)
 
       END PROGRAM KFOLD
