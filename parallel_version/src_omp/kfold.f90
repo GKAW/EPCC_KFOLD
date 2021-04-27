@@ -62,6 +62,7 @@
         CHARACTER (LEN=mxnt+1) :: fasta
 
         CHARACTER (LEN=70) :: seqfile,outfile,logfile
+        CHARACTER (LEN=70) :: outfile_sim,logfile_sim
         CHARACTER (LEN=70) :: xdata,arg
 
         INTEGER :: i,j,k,n,nn,is,io
@@ -138,8 +139,6 @@
         CALL READDATA
 
         OPEN (UNIT=1, FILE=seqfile, STATUS='Unknown')
-        OPEN (UNIT=2, FILE=outfile, STATUS='Unknown')
-        OPEN (UNIT=3, FILE=logfile, STATUS='Unknown')
 
         READ(1,*)fasta
 
@@ -199,6 +198,11 @@
 
         !$OMP PARALLEL DO
         DO isim=1,nsim
+           
+           WRITE(outfile_sim, '(A, A, I0)') TRIM(outfile), ".", isim
+           WRITE(logfile_sim, '(A, A, I0)') TRIM(logfile), ".", isim
+           OPEN (UNIT=2, FILE=outfile_sim, STATUS='Unknown')
+           OPEN (UNIT=3, FILE=logfile_sim, STATUS='Unknown')
 
           io = 1
           dt = 1.0d-2
@@ -254,11 +258,11 @@
 
           ENDDO
 
+          CLOSE (UNIT=2)
+          CLOSE (UNIT=3)
         ENDDO
         !$OMP END PARALLEL DO
 
         CLOSE (UNIT=1)
-        CLOSE (UNIT=2)
-        CLOSE (UNIT=3)
 
       END PROGRAM KFOLD
