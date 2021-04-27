@@ -122,7 +122,7 @@
         icnt = 0
 
         k = ks
-
+        !=== Trace loop once to identify allocatable size ===!
         DO WHILE (k <= ke)
           IF ( r% ibsp(k) > 0 ) THEN
             IF ( k /= ke ) THEN
@@ -134,15 +134,17 @@
           icnt = icnt + 1
         ENDDO
 
+        !=== Allocate arrays ===!
         ALLOCATE( apartial(icnt))
         ALLOCATE( klist(icnt))
         ALLOCATE( cumcnt(icnt))
         !write(*,*) "loop_reac allocatables allocated: ", icnt
-
+        !=== Initialize to zero ===!
         apartial(:) = 0.0d0
         klist(:) = 0
         cumcnt(:) = 0
 
+        !=== Trace loop a second time to populate shared allocatables ===!
         k = ks
         DO alloci=1,icnt
           klist(alloci) = k
