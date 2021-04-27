@@ -5,8 +5,8 @@
 # Author: Eric C. Dykeman
 # Copyright (c) 2015 (Please Refer to LICENCE)
 
-F90 = f95 # nvfortran # 
-FFLAGS = # -fast -fopenmp -Minfo=accel # 
+F90 =  nvfortran # f95
+FFLAGS =  -fast -fopenmp -Minfo=accel # 
 
 
 # ---------------------------------------------------------------------
