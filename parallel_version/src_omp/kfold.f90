@@ -209,7 +209,10 @@
 
         !=== SECTION 2 - Perform RNA Kinetics ===! 
 
-        !$OMP PARALLEL DO
+        !$omp parallel do default(none) &
+        !$omp private (i, j, tout, time, io, dt, outfile_sim, logfile_sim ) &
+        !$omp shared(tstart, ibpi, tmax, istop, ibpf, nn, nsim, outfile, logfile) &
+        !$omp firstprivate(iseed, istart, rna)
         DO isim=1,nsim
            
            WRITE(outfile_sim, '(A, A, I0)') TRIM(outfile), ".", isim
@@ -274,7 +277,6 @@
           CLOSE (UNIT=2)
           CLOSE (UNIT=3)
         ENDDO
-        !$OMP END PARALLEL DO
 
         CLOSE (UNIT=1)
 
