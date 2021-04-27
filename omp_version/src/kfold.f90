@@ -288,18 +288,29 @@
         CLOSE (UNIT=1)
         CLOSE (UNIT=2)
         CLOSE (UNIT=3)
-
+        !write(*,*) "Deallocating kfold"
         !=== Deallocate memory ===!
+        !write(*,*) "1"
         DEALLOCATE(rna% wrk2)
+        !write(*,*) "1"
         DEALLOCATE(rna% wrk1)
+        !write(*,*) "1"
         DEALLOCATE(rna% ptot)
+        !write(*,*) "1"
         DEALLOCATE(rna% psum)
+        !write(*,*) "5"
         DEALLOCATE(rna% nsgl)
+        !write(*,*) "1"
         DEALLOCATE(rna% nhlx)
+        !write(*,*) "1"
         DEALLOCATE(rna% loop)
+        !write(*,*) "1"
         DEALLOCATE(rna% link)
+        !write(*,*) "10"
         DEALLOCATE(rna% ibsp)
+        !write(*,*) "1"
         DEALLOCATE(rna% iseq)
+        !write(*,*) "1"
         DEALLOCATE(rna% seq)
 
       END PROGRAM KFOLD

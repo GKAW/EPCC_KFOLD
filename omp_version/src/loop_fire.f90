@@ -177,16 +177,20 @@
 
                     r% nhlx(jndx) = mh
                     r% nsgl(jndx) = ms
-
+                    !write(*,*) "loop_reac CALL 0, indx", indx
                     CALL LOOP_REAC (r,indx)
+                    !write(*,*) "loop_reac CALL 1, jndx", jndx
                     CALL LOOP_REAC (r,jndx)
 
                     !=== Recalc Lower Loop? ===!
 
                     IF ( iloop == 0 ) kndx = 0
                     IF ( iloop == 1 ) kndx = r% link(j)
-
-                    IF ( kndx /= 0 ) CALL LOOP_REAC (r,kndx)
+                    !TODO: make this 1-line again when we can remove debug logs
+                    IF ( kndx /= 0 ) THEN 
+                      !write(*,*) "loop_reac CALL 2: kndx, iloop", kndx, iloop
+                      CALL LOOP_REAC (r,kndx)
+                    ENDIF
 
                     RETURN
 
@@ -342,6 +346,7 @@
                 !=== Recalc Main Loop? ===!
 
                 IF ( icase /= 2 ) THEN
+                  !write(*,*) "loop_reac CALL 3"
                   CALL LOOP_REAC (r,indx)
                 ENDIF
 
@@ -349,6 +354,7 @@
 
                 IF ( icase /= 3 ) THEN
                 IF ( jndx == 0 ) CALL HELX_REAC (r,ip)
+                !write(*,*) "loop_reac CALL 4"
                 IF ( jndx /= 0 ) CALL LOOP_REAC (r,jndx)
                 ENDIF
 
@@ -356,7 +362,7 @@
 
                 IF ( iloop == 0 ) kndx = 0
                 IF ( iloop == 1 ) kndx = r% link(j)
-
+                !write(*,*) "loop_reac CALL 5"
                 IF ( kndx /= 0 ) CALL LOOP_REAC (r,kndx)
 
                 RETURN
@@ -412,7 +418,7 @@
                   IF ( jp /= n ) r% link(jp) = 0
 
                   !=== Recalc Main Loop ===!
-
+                  !write(*,*) "loop_reac CALL 6"
                   CALL LOOP_REAC (r,indx)
 
                   !=== Recalc Upper/Lower Loops? ===!
@@ -423,7 +429,9 @@
                   IF ( iloop == 1 ) kndx = r% link(j)
 
                   IF ( jndx == 0 ) CALL HELX_REAC (r,ip+1)
+                  !write(*,*) "loop_reac CALL 7"
                   IF ( jndx /= 0 ) CALL LOOP_REAC (r,jndx)
+                  !write(*,*) "loop_reac CALL 8"
                   IF ( kndx /= 0 ) CALL LOOP_REAC (r,kndx)
 
                 ELSEIF ( icase == 2 ) THEN
@@ -435,13 +443,13 @@
                   IF ( jp /= n ) r% link(jp) = 0
 
                   !=== Recalc Main Loop ===!
-
+                  !write(*,*) "loop_reac CALL 9"
                   CALL LOOP_REAC (r,indx)
 
                   !=== Recalc Lower Loop? ===!
 
                   kndx = r% link(ip+1)
-
+                  !write(*,*) "loop_reac CALL 10"
                   IF ( kndx /= 0 ) CALL LOOP_REAC (r,kndx)
 
                 ELSEIF ( icase == 3 ) THEN
@@ -525,14 +533,14 @@
                   ENDIF
 
                   !=== Recalc Main Loop ===!
-
+                  !write(*,*) "loop_reac CALL 11"
                   CALL LOOP_REAC (r,jndx)
 
                   !=== Recalc Lower Loop? ===!
 
                   IF ( iloop == 0 ) kndx = 0
                   IF ( iloop == 1 ) kndx = r% link(j)
-
+                  !write(*,*) "loop_reac CALL 12"
                   IF ( kndx /= 0 ) CALL LOOP_REAC (r,kndx)
 
                 ENDIF
@@ -631,11 +639,12 @@
                 ENDIF
 
                 !=== Recalc Main Loop ===!
-
+                !write(*,*) "loop_reac CALL 13"
                 CALL LOOP_REAC (r,indx)
 
                 jndx = r% link(ip)
                 IF ( jndx == 0 ) CALL HELX_REAC (r,ip)
+                !write(*,*) "loop_reac CALL 14"
                 IF ( jndx /= 0 ) CALL LOOP_REAC (r,jndx)
 
                 !=== Recalc 5' 3' Loops? ===!
@@ -643,12 +652,14 @@
                 IF ( is /= 0 ) THEN
                   jndx = r% link(is+1)
                   IF ( jndx == 0 ) CALL HELX_REAC (r,is+1)
+                  !write(*,*) "loop_reac CALL 15"
                   IF ( jndx /= 0 ) CALL LOOP_REAC (r,jndx)
                 ENDIF
 
                 IF ( js /= 0 ) THEN
                   jndx = r% link(jp+2)
                   IF ( jndx == 0 ) CALL HELX_REAC (r,jp+2)
+                  !write(*,*) "loop_reac CALL 16"
                   IF ( jndx /= 0 ) CALL LOOP_REAC (r,jndx)
                 ENDIF
 
@@ -656,7 +667,7 @@
 
                 IF ( iloop == 0 ) kndx = 0
                 IF ( iloop == 1 ) kndx = r% link(j)
-
+                !write(*,*) "loop_reac CALL 17"
                 IF ( kndx /= 0 ) CALL LOOP_REAC (r,kndx)
 
                 RETURN
@@ -859,15 +870,16 @@
                   r% nsgl(indx) = r% nsgl(indx) - 1
                   r% nsgl(jndx) = r% nsgl(jndx) + 1
                 ENDIF
-
+                !write(*,*) "loop_reac CALL 18"
                 CALL LOOP_REAC (r,indx)
+                !write(*,*) "loop_reac CALL 19"
                 CALL LOOP_REAC (r,jndx)
 
                 !=== Recalc Lower Loop? ==!
 
                 IF ( iloop == 0 ) kndx = 0
                 IF ( iloop == 1 ) kndx = r% link(j)
-
+                !write(*,*) "loop_reac CALL 20"
                 IF ( kndx /= 0 ) CALL LOOP_REAC (r,kndx)
 
               ELSEIF ( icase == 2 ) THEN
@@ -906,13 +918,15 @@
                 r% nsgl(indx) = ns - 1
                 r% nhlx(nl) = 2
                 r% nsgl(nl) = 1
-
+                !write(*,*) "loop_reac CALL 21"
                 CALL LOOP_REAC (r,indx)
+                !write(*,*) "loop_reac CALL 22"
                 CALL LOOP_REAC (r,nl)
 
                 !=== Recalc Upper Loop? ===!
 
                 jndx = r% link(ip+1)
+                !write(*,*) "loop_reac CALL 23"
                 IF ( jndx /= 0 ) CALL LOOP_REAC (r,jndx)
 
                 IF ( iloop == 0 .or. k /= ke ) THEN
@@ -923,7 +937,7 @@
 
                 IF ( iloop == 0 ) kndx = 0
                 IF ( iloop == 1 ) kndx = r% link(j)
-
+                !write(*,*) "loop_reac CALL 24"
                 IF ( kndx /= 0 ) CALL LOOP_REAC (r,kndx)
 
               ELSEIF ( icase == 3 ) THEN
@@ -962,10 +976,11 @@
                   IF ( jndx == 0 ) CALL HELX_REAC (r,ip+1)
 
                 ENDIF
-
+                !write(*,*) "loop_reac CALL 25"
                 CALL LOOP_REAC (r,indx)
-
+                !write(*,*) "loop_reac CALL 26"
                 IF ( jndx /= 0 ) CALL LOOP_REAC (r,jndx)
+                !write(*,*) "loop_reac CALL 27"
                 IF ( kndx /= 0 ) CALL LOOP_REAC (r,kndx)
 
               ELSEIF ( icase == 4 ) THEN
@@ -980,21 +995,21 @@
 
                   r% link(ip)  = 0
                   r% link(jp-1)= 0
-
+                  !write(*,*) "loop_reac CALL 28"
                   CALL LOOP_REAC (r,indx)
 
                   !=== Recalc Upper Loop? ===!
 
                   kndx = r% link(ip+2)
-
-                  IF ( kndx /= 0 ) CALL LOOP_REAC (r,kndx)
+                  !write(*,*) "loop_reac CALL 29"
+                  IF ( kndx /= 0 ) CALL LOOP_REAC (r,kndx)  
                   IF ( kndx == 0 ) CALL HELX_REAC (r,ip+2)
 
                   !=== Recalc Lower Loop? ===!
 
                   IF ( iloop == 0 ) kndx = 0
                   IF ( iloop == 1 ) kndx = r% link(j)
-
+                  !write(*,*) "loop_reac CALL 30"
                   IF ( kndx /= 0 ) CALL LOOP_REAC (r,kndx)
 
                 ELSEIF ( kp == jp-1 ) THEN
@@ -1007,13 +1022,13 @@
                   r% link(ip)  = 0
                   r% link(jp)  = 0
                   r% link(jp-2)= 0
-
+                  !write(*,*) "loop_reac CALL 31"
                   CALL LOOP_REAC (r,indx)
 
                   !=== Recalc Upper Loop? ===!
 
                   kndx = r% link(ip+1)
-
+                  !write(*,*) "loop_reac CALL 32"
                   IF ( kndx /= 0 ) CALL LOOP_REAC (r,kndx)
                   IF ( kndx == 0 ) CALL HELX_REAC (r,ip+1)
 
@@ -1021,7 +1036,7 @@
 
                   IF ( iloop == 0 ) kndx = 0
                   IF ( iloop == 1 ) kndx = r% link(j)
-
+                  !write(*,*) "loop_reac CALL 33"
                   IF ( kndx /= 0 ) CALL LOOP_REAC (r,kndx)
 
                 ELSE
@@ -1041,9 +1056,9 @@
                   ENDIF
 
                   !=== Recalc Loops ===!
-
+                  !write(*,*) "loop_reac CALL 34"
                   CALL LOOP_REAC (r,jndx)
-
+                  !write(*,*) "loop_reac CALL 35"
                   IF ( kndx /= 0 ) CALL LOOP_REAC (r,kndx)
 
                   jndx = indx
@@ -1147,18 +1162,19 @@
                   jndx = r% link(js+2)
 
                   IF ( jndx == 0 ) CALL HELX_REAC (r,js+2)
+                  !write(*,*) "loop_reac CALL 36"
                   IF ( jndx /= 0 ) CALL LOOP_REAC (r,jndx)
 
                   !=== Calculate New Loop ===!
 
                   jndx = r% link(js)
-
+                  !write(*,*) "loop_reac CALL 37"
                   CALL LOOP_REAC (r,jndx)
 
                   !=== Recalc Lower Loop? ===!
 
                   kndx = r% link(is)
-
+                  !write(*,*) "loop_reac CALL 38"
                   IF ( kndx /= 0 ) CALL LOOP_REAC (r,kndx)
 
                   RETURN

@@ -140,6 +140,7 @@
         !=== Fire Reaction ===!
 
         CALL LOOP_FIRE (rna,indx,amax)
+        !write(*,*) "Fired loop."
 
         RETURN
 

@@ -55,6 +55,20 @@
 !
 ! ==============================================================================
 
+
+! Safe variables:
+! write-only:
+! wrk1
+! wrk2
+
+! read-only:
+! r% ibsp  : for subroutines too, as there is no changing of structure before reaction fires.
+! r% loop
+
+! issues:
+! atot : iteratively updated, looking at making allocatable and summing at the end 
+
+
       SUBROUTINE LOOP_REAC (R,INDX)
 
         IMPLICIT NONE
@@ -66,14 +80,17 @@
         INTEGER, INTENT(IN) :: indx
 
         !=== VARIABLES ===!
-
-        INTEGER :: i,j,k,n,ip,jp,kp,is,js
+        INTEGER :: i,j,k,n,ip,jp,kp,is,js, alloci
         INTEGER :: ks,ke,l,lmx,icnt,iloop
         INTEGER :: nt,nh,ns,mt,mh,ms,icase
 
+        INTEGER, DIMENSION(:), ALLOCATABLE :: klist, cumcnt
+
         DOUBLE PRECISION :: x,dg,atot,rate
+        ! apartial holds threadwise components of atot        
+        DOUBLE PRECISION, DIMENSION(:), ALLOCATABLE :: apartial
 
-
+        !write(*,*) "loop_reac allocatables declared"
         i = r% loop(indx)
         j = r% ibsp(i)
         n = r% n
@@ -102,13 +119,48 @@
 
         !=== COMPUTE REACTIONS ===!
 
-        atot = 0.0d0
-
-        k = ks
         icnt = 0
 
-        DO WHILE ( k <= ke )
+        k = ks
 
+        DO WHILE (k <= ke)
+          IF ( r% ibsp(k) > 0 ) THEN
+            IF ( k /= ke ) THEN
+              k = r% ibsp(k)
+            ENDIF
+          ENDIF
+
+          k = k + 1
+          icnt = icnt + 1
+        ENDDO
+
+        ALLOCATE( apartial(icnt))
+        ALLOCATE( klist(icnt))
+        ALLOCATE( cumcnt(icnt))
+        !write(*,*) "loop_reac allocatables allocated: ", icnt
+
+        apartial(:) = 0.0d0
+        klist(:) = 0
+        cumcnt(:) = 0
+
+        k = ks
+        DO alloci=1,icnt
+          klist(alloci) = k
+          IF ( r% ibsp(k) > 0 ) THEN
+            IF ( k /= ke ) THEN
+              k = r% ibsp(k)
+              cumcnt(alloci+1:icnt) = cumcnt(alloci+1:icnt) + 1
+            ENDIF
+          ENDIF
+          k = k + 1
+          cumcnt(alloci+1:icnt) = cumcnt(alloci+1:icnt) + 1
+        ENDDO
+
+
+        ! ======
+        DO alloci=1,icnt
+          k = klist(alloci)
+          !write(*,*) "loop_reac: alloci, k", alloci, k 
           !=== Nucleation Events ===!
 
           IF ( r% ibsp(k) == 0 ) THEN
@@ -122,14 +174,14 @@
             lmx = nt / 2 + 1
 
             IF ( MOD(nt,2) == 0 ) THEN
-            IF ( icnt+1 > lmx-1 ) lmx = lmx - 1
+            IF ( cumcnt(alloci)+1 > lmx-1 ) lmx = lmx - 1
             ENDIF
 
-            IF ( iloop == 0 ) lmx = nt - icnt
+            IF ( iloop == 0 ) lmx = nt - cumcnt(alloci)
 
             kp = k + 1
             is = r% iseq(k)
-
+            !write(*,*) "lmx", lmx
             DO WHILE ( l <= lmx )
 
               IF ( r% ibsp(kp) == 0 ) THEN
@@ -153,10 +205,11 @@
             ENDDO
  
             r% wrk1(k) = x
-            atot = atot + x
+            !write(*,*) "nucleation: apartial, alloci", x, alloci
+            apartial(alloci) = apartial(alloci) + x
 
           ENDIF
-
+          !write(*,*) "nucleation done"
 
           !=== Helix Events ===!
 
@@ -166,10 +219,12 @@
             jp = r% ibsp(k)
 
             r% wrk1(jp) = 0.0d0
+            !write(*,*) "writing wrk2: ", ip
             r% wrk2(ip) = 0.0d0
 
             IF ( r% link(ip) == 0 ) THEN
             r% wrk1(ip) = 0.0d0
+            !write(*,*) "writing wrk2: ", jp
             r% wrk2(jp) = 0.0d0
             ENDIF
 
@@ -211,9 +266,9 @@
 
               x = beta * dg
               x = DEXP(-x) * rateh
-
+              !!write(*,*) "writing wrk2: ", ip
               r% wrk2(ip) = x
-              atot = atot + x
+              apartial(alloci) = apartial(alloci) + x
 
             ENDIF
 
@@ -272,7 +327,7 @@
                 r% wrk1(jp) = x
               ENDIF
 
-              atot = atot + x
+              apartial(alloci) = apartial(alloci) + x
 
             ENDIF
 
@@ -313,7 +368,7 @@
               x = beta * dg
               x = DEXP(-x) * ratem
 
-              atot = atot + x
+              apartial(alloci) = apartial(alloci) + x
 
             ENDIF
 
@@ -363,7 +418,7 @@
                   x = beta * dg
                   x = DEXP(-x) * rated
 
-                  atot = atot + x
+                  apartial(alloci) = apartial(alloci) + x
 
                 ENDIF
 
@@ -389,7 +444,7 @@
                   x = beta * dg
                   x = DEXP(-x) * rated
 
-                  atot = atot + x
+                  apartial(alloci) = apartial(alloci) + x
 
                 ENDIF
 
@@ -437,7 +492,7 @@
                   x = beta * dg
                   x = DEXP(-x) * rated
 
-                  atot = atot + x
+                  apartial(alloci) = apartial(alloci) + x
 
                 ENDIF
 
@@ -461,67 +516,82 @@
                   x = beta * dg
                   x = DEXP(-x) * rated
 
-                  atot = atot + x
+                  apartial(alloci) = apartial(alloci) + x
 
                 ENDIF
 
               ENDIF
 
             ENDIF
+            !write(*,*) "helix tings: apartial, alloci", x, alloci
 
-            !=== Save Loop Reaction Rate ===!
-
-            IF ( iloop == 1 ) r% wrk1(i) = atot
-
-            !=== Open Internal Helix BP ===!
-
-            IF ( r% link(ip) == 0 ) THEN
-            IF ( iloop == 1 .and. k == ke ) THEN
-
-              is = ip + 1
-              js = jp - 1
-
-              DO WHILE ( r% link(is) == 0 )
-
-                CALL DELTAG_HI (r,is,js,dg)
-
-                dg = dg / 2.0d0
-
-                x = beta * dg
-                x = DEXP(-x) * rateh
-
-                r% wrk1(is) = x
-                r% wrk1(js) = 0.0d0
-
-                r% wrk2(is) = 0.0d0
-                r% wrk2(js) = 0.0d0
-
-                atot = atot + x
-
-                is = is + 1
-                js = js - 1
-
-              ENDDO
-
-            ENDIF
-            ENDIF
-
-
-            IF ( k /= ke ) THEN
-              k = r% ibsp(k)
-              icnt = icnt + 1
-            ENDIF
+            ! NOTE: Moved saving the loop propensity to the end, and compensated for Open Internal Helix BP section below.
 
           ENDIF
-
-          k = k + 1
-          icnt = icnt + 1
+        
 
         ENDDO
 
+        atot = 0.0d0
+
+        !=== Combine partial sums ===!
+        DO alloci=1,icnt
+          atot = atot + apartial(alloci)
+        ENDDO
+
+        !=== Save Loop Reaction Rate ===!
+        !write(*,*) "Saving loop reaction rate"
+        IF ( iloop == 1 ) r% wrk1(i) = atot
+
+        !=== Open Internal Helix BP ===!
+        ! Replicate helix event logic from loop above for safety and readability
+        IF ( r% ibsp(k) > 0 ) THEN
+          ip = k
+          jp = r% ibsp(k)
+          IF ( r% link(ip) == 0 ) THEN
+          IF ( iloop == 1 .and. k == ke ) THEN
+
+            is = ip + 1
+            js = jp - 1
+
+            DO WHILE ( r% link(is) == 0 )
+
+              CALL DELTAG_HI (r,is,js,dg)
+
+              dg = dg / 2.0d0
+
+              x = beta * dg
+              x = DEXP(-x) * rateh
+
+              r% wrk1(is) = x
+              r% wrk1(js) = 0.0d0
+              !write(*,*) "writing wrk2: ", is
+              r% wrk2(is) = 0.0d0
+              !write(*,*) "writing wrk2: ", js
+              r% wrk2(js) = 0.0d0
+
+              atot = atot + x
+
+              is = is + 1
+              js = js - 1
+
+            ENDDO
+
+          ENDIF
+          ENDIF
+        ENDIF
         r% ptot(indx) = atot
 
+        !write(*,*) "atot", atot
+        !write(*,*) "Calling loop_resum, atot", atot
         CALL LOOP_RESUM (r,indx)
+        !write(*,*) "loop_resum complete"
+        DEALLOCATE( cumcnt)
+        !write(*,*) "cumcnt DEALLOCATE"
+        DEALLOCATE( klist)
+        !write(*,*) "klist DEALLOCATE"
+        DEALLOCATE( apartial)
+        !write(*,*) "apartial DEALLOCATE"
 
         RETURN
 
